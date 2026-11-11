@@ -11,6 +11,16 @@ G    Enter exact address
 N    Next physical neighbor
 P    Previous physical neighbor
 
+Index:
+A–Z  Select divider
+Enter  Open selected ListIndexCard or read selected pointer
+↑/↓  Select overflow card or authored entry
++    Create ListIndexCard after explicitly entering its overflow number
+*    Browse dedicated keyterm cards alphabetically
+A    Append an authored entry (text, target kind, literal)
+P    Promote selected list entry to a dedicated keyterm card; original retained
+Esc  Return to divider/keyterm list
+
 Editor:
 Ctrl+S  Save draft
 Ctrl+L  Insert literal card reference

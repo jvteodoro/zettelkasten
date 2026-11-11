@@ -5,6 +5,7 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.UUID;
+import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
 import org.zettelkasten.tui.TuiApplication;
@@ -66,7 +67,9 @@ public final class Main {
       var database = SqliteDatabase.open(databasePath);
       var cards =
           new MainCardService(database.unitOfWork(), java.time.Clock.systemUTC(), UUID::randomUUID);
-      new TuiApplication(cards, UUID::randomUUID).run();
+      var indexCards =
+          new IndexService(database.unitOfWork(), java.time.Clock.systemUTC(), UUID::randomUUID);
+      new TuiApplication(cards, indexCards, UUID::randomUUID).run();
       return 0;
     } catch (IOException | RuntimeException exception) {
       err.println("Could not open terminal session: " + exception.getMessage());

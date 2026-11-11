@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 
 /** Lanterna event loop for the analog-first box shell. */
@@ -15,6 +16,10 @@ public final class TuiApplication {
 
   public TuiApplication(MainCardService cards, Supplier<UUID> ids) {
     this(new TuiController(cards, ids), new TerminalRenderer());
+  }
+
+  public TuiApplication(MainCardService cards, IndexService indexCards, Supplier<UUID> ids) {
+    this(new TuiController(cards, indexCards, ids), new TerminalRenderer());
   }
 
   TuiApplication(TuiController controller, TerminalRenderer renderer) {

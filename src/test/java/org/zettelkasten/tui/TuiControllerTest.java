@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 import org.zettelkasten.domain.CardLinkRun;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
@@ -166,6 +167,46 @@ class TuiControllerTest {
     assertFalse(controller.status().contains("3118/3"));
   }
 
+  @Test
+  void indexScreensAuthorEntriesInOrderAndRequireManualMainLookup() {
+    var database = database();
+    var mainCards = service(database);
+    var indexService =
+        new IndexService(database.unitOfWork(), Clock.fixed(NOW, ZoneOffset.UTC), sequence(900));
+    var controller = new TuiController(mainCards, indexService, sequence(1_000));
+
+    controller.handle(character('i'));
+    controller.handle(character('a'));
+    controller.handle(character('+'));
+    type(controller, "1");
+    controller.handle(key(KeyType.Enter));
+    assertEquals(TuiController.Screen.INDEX_LIST_CARD, controller.screen());
+
+    addIndexEntry(controller, "Argument", 'M', "3118/99");
+    addIndexEntry(controller, "Aggressivität", 'K', "Argument");
+    assertEquals(
+        List.of("Argument", "Aggressivität"),
+        indexService.getEntries(indexService.getListCards('A').getFirst().id()).stream()
+            .map(entry -> entry.authoredText())
+            .toList());
+
+    controller.handle(key(KeyType.ArrowUp));
+    controller.handle(key(KeyType.Enter));
+    assertTrue(controller.status().contains("3118/99"));
+    assertEquals(TuiController.Screen.INDEX_LIST_CARD, controller.screen());
+    assertFalse(controller.viewLines().stream().anyMatch(line -> line.contains("suggest")));
+
+    controller.handle(character('p'));
+    assertTrue(controller.status().contains("original entry retained"));
+    assertEquals("Argument", indexService.getKeytermCards().getFirst().keyterm());
+    assertTrue(
+        indexService
+                .getEntries(indexService.getListCards('A').getFirst().id())
+                .getFirst()
+                .promotedToKeytermCardId()
+            != null);
+  }
+
   private SqliteDatabase database() {
     return SqliteDatabase.create(
         temp.resolve("tui.db"), Clock.fixed(NOW, ZoneOffset.UTC), sequence(1));
@@ -199,5 +240,15 @@ class TuiControllerTest {
 
   private static void type(TuiController controller, String value) {
     value.chars().forEach(character -> controller.handle(character((char) character)));
+  }
+
+  private static void addIndexEntry(
+      TuiController controller, String authoredText, char targetKind, String literal) {
+    controller.handle(character('a'));
+    type(controller, authoredText);
+    controller.handle(key(KeyType.Enter));
+    controller.handle(character(targetKind));
+    type(controller, literal);
+    controller.handle(key(KeyType.Enter));
   }
 }

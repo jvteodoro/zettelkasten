@@ -64,8 +64,17 @@ filing. The install prompt shows the immediate physical neighbor addresses aroun
 a fully parsed proposed address, without selecting or filling the address. Exact
 Main lookups report a missing address without offering alternatives.
 `open --db FILE` opens an existing SQLite archive; it does not initialize
-one. Index and Bib currently have navigable informational screens while their
-entry workflows arrive in later issues. The exact bindings are maintained in
+one. Bib has a navigable informational screen while its workflows arrive in
+later issues. The exact bindings are maintained in
 `src/main/resources/keymap.txt` and shown by the `?` help screen. The editor uses
 an 825-codepoint configurable soft limit, warns beginning 25 codepoints early,
 and never truncates. Ctrl+L/K/E are literal prompts; lower-case `l` remains text.
+
+The Index screen now selects A–Z dividers directly, opens explicitly numbered
+overflow list cards in order, and browses dedicated keyterm cards alphabetically.
+On a card, `A` starts a form for authored entry text, target kind (`M`, `K`, or
+`S`), and literal target. `P` promotes the selected list entry while retaining
+the original. Entries and targets are printed text; Enter reports the literal
+pointer and never opens Main. To follow an address manually, go to Main and use
+`G` to type the exact address. No inverted index, suggestions, or clickable
+references are available.
