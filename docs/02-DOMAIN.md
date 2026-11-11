@@ -6,6 +6,12 @@ identities. Lists are copied at aggregate boundaries; order in a body is authore
 run order. Dedicated address parsing and reference-resolution types are added in
 ZK-03 and ZK-04; persistence and UI remain outside this package.
 
+ZK-04 records each reference as an authored occurrence tied to its source card
+and run. Relative address references parse before filing and resolve to an
+address only when source placement exists. Target existence and stable-ID lookup
+belong to application/storage; domain values do not expose follow or backlink
+operations.
+
 ## Aggregates
 
 ### MainCard

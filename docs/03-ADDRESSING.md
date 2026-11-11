@@ -40,6 +40,11 @@ Persist insertion snapshot \`predecessor_card_id\`, \`successor_card_id\`, \`sch
 
 ## Resolution of relative authored links
 
+`AddressReference` retains the exact literal and classifies `/...` as STEM,
+`~/...` as BRANCH, and a full address as FULL. It computes a relative target only
+when a source placement is supplied; target existence and stable-ID resolution
+remain a separate application operation.
+
 For a card at \`4214/2e/3a\`, a typed \`/1\` (STEM) denotes \`4214/2e/3a/1\`; a \`~/1/1a\` (BRANCH) denotes \`4214/1/1a\` using configured top-level branch root \`4214\`; a full address \`1337/1b\` is REMOTE/FULL. These reflect the book's conventions but exact parser precedence is **our design**. Before installing a draft, keep relative links unresolved and retain literal.
 
 Target may be absent; keep PENDING until explicit or background *storage-only* resolution; do not surface existence checks or clickable navigation to the user. Never auto-create a card because it was linked.
