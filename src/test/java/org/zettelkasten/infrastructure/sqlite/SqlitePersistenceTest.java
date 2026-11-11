@@ -56,7 +56,7 @@ class SqlitePersistenceTest {
     Path path = temp.resolve("slipbox.db");
     SqliteDatabase database = SqliteDatabase.create(path);
     assertTrue(Files.isRegularFile(path));
-    assertEquals(1, database.schemaVersion());
+    assertEquals(2, database.schemaVersion());
     try (var connection = database.newConnection();
         Statement statement = connection.createStatement();
         var foreignKeys = statement.executeQuery("PRAGMA foreign_keys")) {
@@ -81,6 +81,9 @@ class SqlitePersistenceTest {
             statement.executeQuery("SELECT version, checksum_sha256 FROM schema_migrations")) {
       assertTrue(migration.next());
       assertEquals(1, migration.getInt(1));
+      assertEquals(64, migration.getString(2).length());
+      assertTrue(migration.next());
+      assertEquals(2, migration.getInt(1));
       assertEquals(64, migration.getString(2).length());
       assertFalse(migration.next());
     }
@@ -555,7 +558,7 @@ class SqlitePersistenceTest {
       statement.execute("PRAGMA user_version = 0");
     }
     var migrated = SqliteDatabase.open(path);
-    assertEquals(1, migrated.schemaVersion());
+    assertEquals(2, migrated.schemaVersion());
     boolean noDrafts = migrated.unitOfWork().transact(tx -> tx.mainCards().findDrafts().isEmpty());
     assertTrue(noDrafts);
     try (var connection = migrated.newConnection();

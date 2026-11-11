@@ -17,7 +17,11 @@ import java.util.List;
 final class MigrationRunner {
   private static final List<Migration> MIGRATIONS =
       List.of(
-          new Migration(1, "canonical SQLite schema", "/db/migration/V001__canonical_sqlite.sql"));
+          new Migration(1, "canonical SQLite schema", "/db/migration/V001__canonical_sqlite.sql"),
+          new Migration(
+              2,
+              "Index promotion provenance and append-only entries",
+              "/db/migration/V002__index_promotion_provenance.sql"));
 
   int migrate(Connection connection) throws SQLException {
     int currentVersion = currentVersion(connection);

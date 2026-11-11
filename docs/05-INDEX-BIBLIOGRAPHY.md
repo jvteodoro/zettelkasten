@@ -9,6 +9,8 @@ Two subtypes:
 1. **ListIndexCard**: fixed letter, overflow sequence and user-authored entries in temporal insertion order. Each entry can be KEYTERM→MAIN_ADDRESS, KEYTERM→INDEX_KEYTERM (redirect), or authored See Also. Preserve literal entries.
 2. **KeytermIndexCard**: manually promoted/dedicated keyed card, contains multiple user-curated address references, see-also and contexts; organized alphabetically among dedicated cards. Promotion must not silently erase old entries; retain strike-through/redirect history.
 
+The current Index domain and SQLite adapter implement these authored records. List cards are explicitly numbered per divider, and their entries receive monotonically increasing per-card order when appended. Each entry retains its authored text, target kind and literal; Main-address and dedicated-keyterm pointers resolve to stable IDs only when an exact installed target exists. Missing targets remain as written. See Also remains authored text and is not resolved through search. Promoting an entry creates a dedicated keyterm card and a copy of that entry while recording an append-only source-to-promotion mapping; the list entry and its original order remain intact. Card creation, entry addition and promotion provenance each produce domain events in the same unit of work as their rows.
+
 Index does not auto-link every occurrence, tag cards, suggest synonym, or offer search. Term->address relation is an authored edge even if the target address currently does not exist.
 
 ## Bibliographic entities

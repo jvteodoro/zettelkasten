@@ -9,6 +9,12 @@ The stored placement sort key encodes arbitrary-precision numeric token lengths,
 letter tokens, suffixes and path prefixes so SQL ordering agrees with the v1
 semantic comparator.
 
+Migration V002 adds append-only Index promotion provenance and guards optional stable
+pointer IDs: a Main pointer must resolve to an installed Main card, and an Index
+redirect must resolve to a dedicated keyterm card. Index target literals remain stored
+even when those IDs are null. Promotion rows must point to a copied entry with the same
+authored target and to a keyterm card named for the promoted source entry.
+
 ## Persistence contract
 
 Single embedded SQLite database (e.g. \`slipbox.db\`) is the **canonical store**. WAL may create transient \`-wal\` and \`-shm\` files; explain this to users. No application service or DB server. Support one writer application per file; second writer receives a clear lock error/read-only option. Use Xerial SQLite JDBC (pin version via Maven and verify compatible Java), Flyway community or hand-rolled numbered immutable migrations, never ORM auto-DDL. Implement reusable JDBC repositories with prepared statements.
