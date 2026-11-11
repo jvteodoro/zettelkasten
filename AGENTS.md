@@ -31,7 +31,7 @@ If specifications conflict, stop at the **minimal reversible behavior**, documen
 
 ## Required implementation architecture
 
-- Java 21; Maven; single-process modular monolith under org.zettelkasten.
+- Java 25 LTS (JDK 25 required for build and runtime); Maven 3.9+; single-process modular monolith under org.zettelkasten. Set `maven.compiler.release=25`; do not silently downgrade to Java 21 or enable preview APIs without an ADR.
 - Modules/packages: domain (card/address/placement/reference/index/bibliography/event), application (commands/queries/ports), infrastructure (sqlite/bibtex/zotero/export/clock/id), tui (Lanterna screen/editor/input/render), cli.
 - Domain pure Java, no dependency on UI, JDBC, JSON parser, or Zotero DTOs.
 - Application services own transactions through a UnitOfWork port; repositories are ports. SQLite adapter is the canonical storage engine. Any later Ladybug adapter/exporter must satisfy the same canonical contracts.

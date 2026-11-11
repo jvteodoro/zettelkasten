@@ -59,9 +59,13 @@ backup+restore -> same canonical state
 
 Adapt next-neighbor expectation to whichever addresses exist in fixture; do not fake a 3118/2 card.
 
+## Runtime compatibility gate
+
+Assert `java -version` is 25 and the generated application runs on JDK 25. Use `maven.compiler.release=25` and fail builds on an older JDK; do not silently compile for Java 21. Keep Surefire/Failsafe/JaCoCo and any bytecode scanners compatible with Java 25.
+
 ## CI gates
 
-GitHub Actions PR + push: build/test on Java 21 Linux with Maven in batch mode; no network-dependent tests; unit+integration; Spotless/Checkstyle (after setup), OWASP dependency checks on scheduled release path, static docs/hook validation, packaged runnable artifact and smoke test. Full CI is source of truth. Local hooks are a faster subset.
+GitHub Actions PR + push: build/test on Temurin JDK 25 Linux with Maven in batch mode; no network-dependent tests; unit+integration; Spotless/Checkstyle (after setup), OWASP dependency checks on scheduled release path, static docs/hook validation, packaged runnable artifact and smoke test. Full CI is source of truth. Local hooks are a faster subset.
 
 ## Definition of done
 

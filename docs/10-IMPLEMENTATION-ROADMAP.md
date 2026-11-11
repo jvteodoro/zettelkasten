@@ -28,7 +28,7 @@ ZK-01 scaffold + CI/hooks
 
 | Code | Implementation outcome | Dependencies |
 |------|-------------------------|--------------|
-| ZK-01 | Java 21 scaffold, Maven wrapper, quality gates, CI, hooks, keymap resource | none |
+| ZK-01 | Java 25 scaffold, Maven wrapper, quality gates, CI, hooks, keymap resource | none |
 | ZK-02 | Pure domain entities, state machine, structured body runs | ZK-01 |
 | ZK-03 | Address parser/comparator, persisted scheme, fixture/property tests | ZK-02 |
 | ZK-04 | Internal/keyterm/external reference model; pending resolution | ZK-02, ZK-03 |

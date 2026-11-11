@@ -12,7 +12,7 @@ if [ -f pom.xml ]; then
     echo "[pre-push] local Maven check explicitly skipped; CI remains mandatory"
   else
     command -v mvn >/dev/null 2>&1 || {
-      echo "[pre-push] install Maven 3.9+ and JDK 21" >&2; exit 1;
+      echo "[pre-push] install Maven 3.9+ and JDK 25" >&2; exit 1;
     }
     mvn -B verify
   fi

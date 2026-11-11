@@ -2,7 +2,7 @@
 
 ## Platform
 
-Java 21 + Lanterna (ncurses-like terminal implementation, not JNA curses). Support ANSI terminals on Linux/macOS and sensible Windows terminal fallback where Lanterna supports it. 80×24 as reference size, dynamic reflow on resize, explicit small-terminal message below minimum; no unsafe ANSI injection from card content.
+Java 25 + Lanterna (ncurses-like terminal implementation, not JNA curses). Support ANSI terminals on Linux/macOS and sensible Windows terminal fallback where Lanterna supports it. 80×24 as reference size, dynamic reflow on resize, explicit small-terminal message below minimum; no unsafe ANSI injection from card content.
 
 ## Screens
 

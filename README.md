@@ -11,7 +11,7 @@ A Java terminal application that reproduces the *working constraints* of a physi
 - User deliberately selects numeric-alpha addresses, writes internal references, files index entries, and discovers adjacent cards.
 - No full-text search, tags, backlinks, semantic recommendations, click-to-follow links, automatic address assignment, or link target autocomplete in the normal user interface.
 - Structured link spans and provenance are recorded internally for archival fidelity; no graph-analysis screen is exposed in the core product.
-- Java 21 LTS, Lanterna terminal UI, embedded SQLite file, imported BibTeX, future opt-in Zotero integration.
+- Java 25 LTS, Lanterna terminal UI, embedded SQLite file, imported BibTeX, future opt-in Zotero integration.
 
 ## First use (when application is implemented)
 
@@ -53,7 +53,7 @@ This is an **intentional digital experiment**. We do **not** claim that keyboard
 
 ## Development
 
-Install JDK 21 and Maven 3.9+. Then run:
+Install **JDK 25** and Maven 3.9+ (Java 21 is intentionally not a build target). Then run:
 
 ~~~sh
 mvn -B verify

@@ -33,13 +33,19 @@ jobs:
         shell: bash
         run: |
           if test -f pom.xml; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         if: steps.scaffold.outputs.present == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
           cache: maven
+      - name: Verify active JDK 25
+        if: steps.scaffold.outputs.present == 'true'
+        shell: bash
+        run: |
+          java -version
+          test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^[[:space:]]*java.specification.version = //p' | head -n1)" = "25"
       - name: Maven verify
         if: steps.scaffold.outputs.present == 'true'
         run: mvn -B verify

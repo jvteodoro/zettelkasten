@@ -2,7 +2,7 @@
 
 ## Decisions
 
-- **Runtime:** Java 21 LTS, Maven. Favor package-separated modular monolith over premature multi-module Maven overhead. Package names below are stable boundaries.
+- **Runtime:** Java 25 LTS, JDK 25 build/run, Maven 3.9+. Target `maven.compiler.release=25` and pin compiler/Surefire/Failsafe plugin versions compatible with JDK 25. No preview features by default; compiler target changes require an ADR. Maven Toolchains may be used to ensure JDK 25 is selected deterministically. Favor package-separated modular monolith over premature multi-module Maven overhead. Package names below are stable boundaries.
 - **UI:** Lanterna terminal screen and explicit modal state machine. No UI code calls JDBC directly.
 - **Storage:** embedded SQLite via JDBC; single canonical user database per slip-box, no server. LadybugDB is an optional future **derived graph projection**, never a second source of truth.
 - **Library integrations:** BibTeX import; optional future Zotero adapter at a port. No remote dependencies for normal operation.
