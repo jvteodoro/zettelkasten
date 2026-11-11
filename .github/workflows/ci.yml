@@ -1,0 +1,57 @@
+name: CI
+on:
+  push:
+    branches: [main, "docs/**", "feat/**", "fix/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate hook syntax and handoff
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh -n .githooks/pre-commit
+          sh -n .githooks/pre-push
+          bash -n scripts/install-git-hooks.sh
+          test -f AGENTS.md
+          for i in $(seq -w 0 12); do
+            compgen -G "docs/${i}-*.md" >/dev/null || { echo "Missing docs/${i}-*.md"; exit 1; }
+          done
+          find .agents/skills -name SKILL.md -type f | grep -q .
+  java:
+    runs-on: ubuntu-latest
+    needs: structure
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Java scaffold
+        id: scaffold
+        shell: bash
+        run: |
+          if test -f pom.xml; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Set up JDK 21
+        if: steps.scaffold.outputs.present == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Maven verify
+        if: steps.scaffold.outputs.present == 'true'
+        run: mvn -B verify
+      - name: Scaffold pending
+        if: steps.scaffold.outputs.present != 'true'
+        run: echo "ZK-01 will introduce pom.xml; Java build not yet run."
+      - name: Upload failing reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-failsafe-reports
+          path: |
+            **/target/surefire-reports/**
+            **/target/failsafe-reports/**
+          if-no-files-found: ignore

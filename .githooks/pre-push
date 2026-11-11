@@ -1,0 +1,21 @@
+#!/bin/sh
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+echo "[pre-push] structural checks"
+sh -n .githooks/pre-commit .githooks/pre-push
+bash -n scripts/install-git-hooks.sh
+test -f AGENTS.md
+test -f docs/00-PRODUCT-CONTRACT.md
+test -f docs/08-TEST-PLAN.md
+if [ -f pom.xml ]; then
+  if [ "${SKIP_LONG_HOOKS:-0}" = "1" ]; then
+    echo "[pre-push] local Maven check explicitly skipped; CI remains mandatory"
+  else
+    command -v mvn >/dev/null 2>&1 || {
+      echo "[pre-push] install Maven 3.9+ and JDK 21" >&2; exit 1;
+    }
+    mvn -B verify
+  fi
+else
+  echo "[pre-push] pom.xml absent (ZK-01 pending); docs-only check"
+fi
