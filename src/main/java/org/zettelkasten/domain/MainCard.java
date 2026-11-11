@@ -15,7 +15,7 @@ public final class MainCard {
   private final CardState state;
   private final long revision;
   private final List<BodyRun> authoredBody;
-  private final String addressLiteral;
+  private final NumericAlphaAddress address;
   private final Instant installedAt;
   private final long installedBodyRevision;
   private final List<CardAnnotation> annotations;
@@ -26,7 +26,7 @@ public final class MainCard {
       CardState state,
       long revision,
       List<BodyRun> authoredBody,
-      String addressLiteral,
+      NumericAlphaAddress address,
       Instant installedAt,
       long installedBodyRevision,
       List<CardAnnotation> annotations) {
@@ -36,15 +36,14 @@ public final class MainCard {
     if (revision < 0) throw new IllegalArgumentException("revision must be nonnegative");
     this.revision = revision;
     this.authoredBody = CardAnnotation.immutableRuns(authoredBody);
-    this.addressLiteral = addressLiteral;
+    this.address = address;
     this.installedAt = installedAt;
     this.installedBodyRevision = installedBodyRevision;
     this.annotations = List.copyOf(Objects.requireNonNull(annotations, "annotations"));
-    if (state == CardState.DRAFT && (addressLiteral != null || installedAt != null)) {
+    if (state == CardState.DRAFT && (address != null || installedAt != null)) {
       throw new IllegalArgumentException("Draft cards cannot have an address or install time");
     }
-    if (state == CardState.INSTALLED
-        && (addressLiteral == null || addressLiteral.isBlank() || installedAt == null)) {
+    if (state == CardState.INSTALLED && (address == null || installedAt == null)) {
       throw new IllegalArgumentException(
           "Installed cards require a chosen address and install time");
     }
@@ -68,17 +67,19 @@ public final class MainCard {
 
   /** Freeze the current body and retain the manually chosen literal address. */
   public MainCard install(String chosenAddressLiteral, Instant time) {
+    return install(NumericAlphaAddress.parse(chosenAddressLiteral), time);
+  }
+
+  public MainCard install(NumericAlphaAddress chosenAddress, Instant time) {
     requireDraft();
-    Objects.requireNonNull(chosenAddressLiteral, "chosenAddressLiteral");
-    if (chosenAddressLiteral.isBlank())
-      throw new IllegalArgumentException("Address cannot be blank");
+    Objects.requireNonNull(chosenAddress, "chosenAddress");
     return new MainCard(
         id,
         createdAt,
         CardState.INSTALLED,
         revision,
         authoredBody,
-        chosenAddressLiteral,
+        chosenAddress,
         Objects.requireNonNull(time, "time"),
         revision,
         annotations);
@@ -105,7 +106,7 @@ public final class MainCard {
         state,
         revision,
         authoredBody,
-        addressLiteral,
+        address,
         installedAt,
         installedBodyRevision,
         appended);
@@ -142,7 +143,11 @@ public final class MainCard {
   }
 
   public String addressLiteral() {
-    return addressLiteral;
+    return address == null ? null : address.literal();
+  }
+
+  public NumericAlphaAddress address() {
+    return address;
   }
 
   public Instant installedAt() {

@@ -1,5 +1,9 @@
 # Numeric-alpha address grammar, placement, ordering — normative v1
 
+The v1 ambiguity around zero and canonical equality is resolved by
+[ADR 0005](adr/0005-address-zero-prefix-policy.md): a single `0` is valid, while
+multi-digit numeric components with leading zeroes are rejected.
+
 ## Why
 
 Addresses are fixed *locations*, not semantic rankings or hierarchical concept IDs. The analog author can file a new card between adjacent cards without changing existing addresses (Scheper, chapter 7, pp. 226–228, 263–265). Scheper's illustrative 3118/2a goes between 3118/2 and 3118/3. Prefix/suffix alone MUST NOT become inferred semantic PARENT_OF edges.

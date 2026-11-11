@@ -1,0 +1,9 @@
+raw	error
+	empty
+00	leading-zero
+1/02	leading-zero
+1//2	empty-segment
+1/	empty-segment
+/1	root-must-be-numeric
+1/Ä	ascii-only
+1/2 3	whitespace

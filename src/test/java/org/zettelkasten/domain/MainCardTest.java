@@ -64,6 +64,14 @@ class MainCardTest {
     assertThrows(IllegalArgumentException.class, () -> installed.appendAnnotation(annotation));
   }
 
+  @Test
+  void installationRejectsAnInvalidAddressWithoutChangingTheDraft() {
+    var draft = MainCard.createDraft(CARD_ID, NOW, List.of(new TextRun(uuid(30), "still here")));
+    assertThrows(AddressParseException.class, () -> draft.install("not/a-valid-address", NOW));
+    assertEquals(CardState.DRAFT, draft.state());
+    assertEquals("still here", draft.authoredBody().getFirst().literal());
+  }
+
   private static UUID uuid(long tail) {
     return new UUID(0, tail);
   }
