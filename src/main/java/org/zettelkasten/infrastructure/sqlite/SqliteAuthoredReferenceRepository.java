@@ -18,9 +18,11 @@ import org.zettelkasten.domain.ResolutionStatus;
 /** JDBC adapter for authored reference occurrences. */
 final class SqliteAuthoredReferenceRepository implements AuthoredReferenceRepository {
   private final Connection connection;
+  private final SqliteEventJournal events;
 
-  SqliteAuthoredReferenceRepository(Connection connection) {
+  SqliteAuthoredReferenceRepository(Connection connection, SqliteEventJournal events) {
     this.connection = Objects.requireNonNull(connection, "connection");
+    this.events = Objects.requireNonNull(events, "events");
   }
 
   @Override
@@ -42,6 +44,15 @@ final class SqliteAuthoredReferenceRepository implements AuthoredReferenceReposi
       insert.setString(10, reference.status().name());
       insert.setString(11, reference.createdAt().toString());
       insert.executeUpdate();
+      events.append(
+          "ReferenceAuthored",
+          "MAIN_CARD",
+          reference.sourceCardId(),
+          "{\"referenceId\":\""
+              + reference.id()
+              + "\",\"kind\":\""
+              + reference.kind().name()
+              + "\"}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not save authored reference", exception);
     }

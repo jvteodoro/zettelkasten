@@ -28,9 +28,11 @@ import org.zettelkasten.domain.TextRun;
 /** JDBC adapter for MainCardRepository. All mutations participate in the caller's transaction. */
 final class SqliteMainCardRepository implements MainCardRepository {
   private final Connection connection;
+  private final SqliteEventJournal events;
 
-  SqliteMainCardRepository(Connection connection) {
+  SqliteMainCardRepository(Connection connection, SqliteEventJournal events) {
     this.connection = Objects.requireNonNull(connection, "connection");
+    this.events = Objects.requireNonNull(events, "events");
   }
 
   @Override
@@ -92,6 +94,7 @@ final class SqliteMainCardRepository implements MainCardRepository {
       insert.setString(3, draft.createdAt().toString());
       insert.executeUpdate();
       insertOriginalBody(draft);
+      events.append("CardCreated", "MAIN_CARD", draft.id(), "{}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not create Main draft", exception);
     }
@@ -117,6 +120,8 @@ final class SqliteMainCardRepository implements MainCardRepository {
         delete.executeUpdate();
       }
       insertRuns(draft.id(), draft.authoredBody());
+      events.append(
+          "DraftEdited", "MAIN_CARD", draft.id(), "{\"revision\":" + draft.revision() + "}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not update Main draft", exception);
     }
@@ -142,6 +147,21 @@ final class SqliteMainCardRepository implements MainCardRepository {
         if (!row.next() || row.getLong(1) != expectedDraftRevision)
           throw new PersistenceException("Draft changed or no longer exists");
       }
+      events.append(
+          "CardInstalled",
+          "MAIN_CARD",
+          installed.id(),
+          "{\"addressLiteral\":\""
+              + installed.address().literal()
+              + "\",\"addressScheme\":\""
+              + placement.schemeId()
+              + "\",\"predecessorId\":"
+              + nullableJson(placement.predecessorCardId())
+              + ",\"successorId\":"
+              + nullableJson(placement.successorCardId())
+              + ",\"bodyRevision\":"
+              + installed.revision()
+              + "}");
       try (PreparedStatement insert =
           connection.prepareStatement(
               "INSERT INTO placements(card_id,raw_address,canonical_address,scheme_id,scheme_version,sort_key,"
@@ -191,6 +211,11 @@ final class SqliteMainCardRepository implements MainCardRepository {
         insert.executeUpdate();
       }
       insertRuns(annotation.id(), annotation.runs());
+      events.append(
+          "CardAnnotationAppended",
+          "MAIN_CARD",
+          cardId,
+          "{\"annotationId\":\"" + annotation.id() + "\"}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not append Main card annotation", exception);
     }
@@ -328,6 +353,10 @@ final class SqliteMainCardRepository implements MainCardRepository {
 
   private static String nullable(UUID id) {
     return id == null ? null : id.toString();
+  }
+
+  private static String nullableJson(UUID id) {
+    return id == null ? "null" : "\"" + id + "\"";
   }
 
   private static void requireDraft(MainCard card) {

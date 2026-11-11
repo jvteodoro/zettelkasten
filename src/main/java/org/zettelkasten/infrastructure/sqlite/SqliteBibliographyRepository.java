@@ -18,9 +18,11 @@ import org.zettelkasten.domain.BibliographicSource;
 /** JDBC adapter separating imported source metadata and authored bibliographic research. */
 final class SqliteBibliographyRepository implements BibliographyRepository {
   private final Connection connection;
+  private final SqliteEventJournal events;
 
-  SqliteBibliographyRepository(Connection connection) {
+  SqliteBibliographyRepository(Connection connection, SqliteEventJournal events) {
     this.connection = Objects.requireNonNull(connection, "connection");
+    this.events = Objects.requireNonNull(events, "events");
   }
 
   @Override
@@ -51,6 +53,7 @@ final class SqliteBibliographyRepository implements BibliographyRepository {
       insert.setString(18, source.updatedAt().toString());
       insert.executeUpdate();
       insertRawFields(source);
+      events.append("BibliographicSourceImported", "BIBLIOGRAPHIC_SOURCE", source.id(), "{}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not create bibliographic source", exception);
     }
@@ -110,6 +113,8 @@ final class SqliteBibliographyRepository implements BibliographyRepository {
         insert.setString(4, card.sourceOverview());
         insert.executeUpdate();
       }
+      events.append(
+          "BibCardCreated", "BIB_CARD", card.id(), "{\"sourceId\":\"" + card.sourceId() + "\"}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not create BibCard", exception);
     }

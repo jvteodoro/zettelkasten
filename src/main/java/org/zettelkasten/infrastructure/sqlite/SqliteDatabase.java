@@ -9,7 +9,10 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Clock;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Supplier;
 import org.sqlite.SQLiteConfig;
 import org.zettelkasten.application.PersistenceException;
 
@@ -17,13 +20,24 @@ import org.zettelkasten.application.PersistenceException;
 public final class SqliteDatabase {
   private static final int BUSY_TIMEOUT_MILLIS = 5_000;
   private final Path path;
+  private final Clock clock;
+  private final Supplier<UUID> eventIds;
 
-  private SqliteDatabase(Path path) {
+  private SqliteDatabase(Path path, Clock clock, Supplier<UUID> eventIds) {
     this.path = path;
+    this.clock = clock;
+    this.eventIds = eventIds;
   }
 
   /** Create a new archive at an explicit path. Existing paths are never overwritten. */
   public static SqliteDatabase create(Path requestedPath) {
+    return create(requestedPath, Clock.systemUTC(), UUID::randomUUID);
+  }
+
+  /** Create an archive with injectable event time and identities for deterministic execution. */
+  public static SqliteDatabase create(Path requestedPath, Clock clock, Supplier<UUID> eventIds) {
+    java.util.Objects.requireNonNull(clock, "clock");
+    java.util.Objects.requireNonNull(eventIds, "eventIds");
     Path path = normalize(requestedPath);
     if (Files.exists(path))
       throw new PersistenceException("Refusing to overwrite an existing archive: " + path);
@@ -51,7 +65,7 @@ public final class SqliteDatabase {
         new MigrationRunner().migrate(connection);
         connection.commit();
       }
-      return new SqliteDatabase(path);
+      return new SqliteDatabase(path, clock, eventIds);
     } catch (SQLException | IOException exception) {
       if (created) deleteCreatedArchive(path);
       throw new PersistenceException("Could not initialize SQLite archive", exception);
@@ -60,6 +74,13 @@ public final class SqliteDatabase {
 
   /** Open an existing regular archive and apply only pending versioned migrations. */
   public static SqliteDatabase open(Path requestedPath) {
+    return open(requestedPath, Clock.systemUTC(), UUID::randomUUID);
+  }
+
+  /** Open an archive with injectable event time and identities for deterministic execution. */
+  public static SqliteDatabase open(Path requestedPath, Clock clock, Supplier<UUID> eventIds) {
+    java.util.Objects.requireNonNull(clock, "clock");
+    java.util.Objects.requireNonNull(eventIds, "eventIds");
     Path path = normalize(requestedPath);
     if (Files.isSymbolicLink(path) || !Files.isRegularFile(path)) {
       throw new PersistenceException(
@@ -69,7 +90,7 @@ public final class SqliteDatabase {
       connection.setAutoCommit(false);
       new MigrationRunner().migrate(connection);
       connection.commit();
-      return new SqliteDatabase(path);
+      return new SqliteDatabase(path, clock, eventIds);
     } catch (SQLException exception) {
       throw new PersistenceException("Could not open SQLite archive", exception);
     }
@@ -81,6 +102,14 @@ public final class SqliteDatabase {
 
   public SqliteUnitOfWork unitOfWork() {
     return new SqliteUnitOfWork(this);
+  }
+
+  Clock clock() {
+    return clock;
+  }
+
+  Supplier<UUID> eventIds() {
+    return eventIds;
   }
 
   int schemaVersion() {

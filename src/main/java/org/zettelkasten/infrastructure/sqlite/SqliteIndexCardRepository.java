@@ -17,9 +17,11 @@ import org.zettelkasten.domain.ListIndexCard;
 /** JDBC adapter for the authored Index card identities. */
 final class SqliteIndexCardRepository implements IndexCardRepository {
   private final Connection connection;
+  private final SqliteEventJournal events;
 
-  SqliteIndexCardRepository(Connection connection) {
+  SqliteIndexCardRepository(Connection connection, SqliteEventJournal events) {
     this.connection = Objects.requireNonNull(connection, "connection");
+    this.events = Objects.requireNonNull(events, "events");
   }
 
   @Override
@@ -35,6 +37,11 @@ final class SqliteIndexCardRepository implements IndexCardRepository {
         insert.setInt(3, card.overflowNumber());
         insert.executeUpdate();
       }
+      events.append(
+          "IndexCardCreated",
+          "INDEX_CARD",
+          card.id(),
+          "{\"kind\":\"LIST\",\"divider\":\"" + card.divider() + "\"}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not create Index list card", exception);
     }
@@ -53,6 +60,7 @@ final class SqliteIndexCardRepository implements IndexCardRepository {
         insert.setString(3, card.createdAt().toString());
         insert.executeUpdate();
       }
+      events.append("IndexCardCreated", "INDEX_CARD", card.id(), "{\"kind\":\"KEYTERM\"}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not create Index keyterm card", exception);
     }

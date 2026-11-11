@@ -14,5 +14,7 @@ public interface UnitOfWork {
     IndexCardRepository indexCards();
 
     BibliographyRepository bibliography();
+
+    DomainEventRepository events();
   }
 }

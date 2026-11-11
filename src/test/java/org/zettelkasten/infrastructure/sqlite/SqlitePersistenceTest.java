@@ -12,7 +12,9 @@ import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +22,7 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.zettelkasten.application.AddressConflictException;
@@ -32,6 +35,7 @@ import org.zettelkasten.domain.BodyRun;
 import org.zettelkasten.domain.CardAnnotation;
 import org.zettelkasten.domain.CardLinkRun;
 import org.zettelkasten.domain.CardState;
+import org.zettelkasten.domain.DomainEvent;
 import org.zettelkasten.domain.ExRefRun;
 import org.zettelkasten.domain.KeytermIndexCard;
 import org.zettelkasten.domain.KeytermLinkRun;
@@ -152,6 +156,12 @@ class SqlitePersistenceTest {
         reopened
             .unitOfWork()
             .transact(tx -> tx.mainCards().findByAddress(address).orElseThrow().id()));
+    assertEquals(
+        List.of("CardCreated", "DraftEdited", "CardInstalled", "CardAnnotationAppended"),
+        reopened
+            .unitOfWork()
+            .transact(
+                tx -> tx.events().findAfter(0, 100).stream().map(DomainEvent::eventType).toList()));
 
     try (var connection = reopened.newConnection();
         var update =
@@ -211,6 +221,12 @@ class SqlitePersistenceTest {
         database.unitOfWork().transact(tx -> tx.references().findBySourceCard(cardId).getFirst());
     assertEquals(reference, restored);
     assertEquals("/1", restored.authoredLiteral());
+    assertEquals(
+        List.of("CardCreated", "ReferenceAuthored"),
+        database
+            .unitOfWork()
+            .transact(
+                tx -> tx.events().findAfter(0, 100).stream().map(DomainEvent::eventType).toList()));
 
     var orphan =
         AuthoredReference.card(uuid(13), uuid(99), uuid(98), AddressReference.parse("/2"), NOW);
@@ -288,6 +304,17 @@ class SqlitePersistenceTest {
     boolean keytermStored =
         reopened.unitOfWork().transact(tx -> tx.indexCards().contains(keyterm.id()));
     assertTrue(keytermStored);
+    assertEquals(
+        List.of(
+            "IndexCardCreated",
+            "IndexCardCreated",
+            "IndexCardCreated",
+            "BibliographicSourceImported",
+            "BibCardCreated"),
+        reopened
+            .unitOfWork()
+            .transact(
+                tx -> tx.events().findAfter(0, 100).stream().map(DomainEvent::eventType).toList()));
   }
 
   @Test
@@ -320,6 +347,9 @@ class SqlitePersistenceTest {
     boolean rolledBackMissing =
         database.unitOfWork().transact(tx -> tx.mainCards().findById(rolledBackId).isEmpty());
     assertTrue(rolledBackMissing);
+    int eventsAfterInjectedFailure =
+        database.unitOfWork().transact(tx -> tx.events().findAfter(0, 100).size());
+    assertEquals(2, eventsAfterInjectedFailure);
 
     assertThrows(
         PersistenceException.class,
@@ -369,6 +399,113 @@ class SqlitePersistenceTest {
                 tx ->
                     tx.mainCards().findByAddress(NumericAlphaAddress.parse("3118/2a")).isPresent());
     assertTrue(firstAddressRetained);
+  }
+
+  @Test
+  void mutationEventsShareTransactionsReopenInSequenceAndRetainFutureVersions() throws Exception {
+    AtomicLong identities = new AtomicLong();
+    var database =
+        SqliteDatabase.create(
+            temp.resolve("events.db"),
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            () -> new UUID(0, identities.incrementAndGet()));
+    UUID cardId = uuid(70);
+    var draft = MainCard.createDraft(cardId, NOW, List.of(new TextRun(uuid(71), "Private note")));
+    database
+        .unitOfWork()
+        .transact(
+            tx -> {
+              tx.mainCards().insertDraft(draft);
+              return null;
+            });
+    var installed = draft.install("3118/2a", NOW.plusSeconds(1));
+    database
+        .unitOfWork()
+        .transact(
+            tx -> {
+              tx.mainCards()
+                  .install(
+                      installed,
+                      new PlacementSnapshot(
+                          installed.id(), installed.address(), null, null, installed.installedAt()),
+                      0);
+              return null;
+            });
+
+    var reopened = SqliteDatabase.open(database.path());
+    var events = reopened.unitOfWork().transact(tx -> tx.events().findAfter(0, 100));
+    assertEquals(
+        List.of("CardCreated", "CardInstalled"),
+        events.stream().map(DomainEvent::eventType).toList());
+    assertTrue(events.get(0).sequence() < events.get(1).sequence());
+    assertEquals(cardId, events.get(0).aggregateId());
+    assertEquals(1, events.get(0).schemaVersion());
+    assertFalse(events.get(0).payloadJson().contains("Private note"));
+    assertEquals(NOW, events.get(0).occurredAt());
+    assertEquals(uuid(1), events.get(0).eventId());
+    assertEquals(uuid(2), events.get(0).correlationId());
+    assertTrue(events.get(1).payloadJson().contains("\"addressScheme\":\"ANTINET_SLASH_V1\""));
+
+    try (var fixture =
+        SqlitePersistenceTest.class.getResourceAsStream(
+            "/fixtures/events/card-installed-v1.json")) {
+      assertNotNull(fixture);
+      String fixtureJson = new String(fixture.readAllBytes(), StandardCharsets.UTF_8);
+      assertTrue(fixtureJson.contains("\"schemaVersion\":1"));
+      assertTrue(fixtureJson.contains("\"predecessorId\":null"));
+      assertTrue(fixtureJson.contains("\"eventType\":\"CardInstalled\""));
+    }
+
+    String futurePayload = "{\"schemaVersion\":42,\"extension\":\"preserve\"}";
+    try (var connection = reopened.newConnection();
+        var insert =
+            connection.prepareStatement(
+                "INSERT INTO domain_events(event_id,aggregate_type,aggregate_id,event_type,schema_version,"
+                    + "happened_at,correlation_id,payload_json) VALUES(?,?,?,?,?,?,?,?)")) {
+      insert.setString(1, uuid(72).toString());
+      insert.setString(2, "MAIN_CARD");
+      insert.setString(3, cardId.toString());
+      insert.setString(4, "FutureEvent");
+      insert.setInt(5, 42);
+      insert.setString(6, NOW.toString());
+      insert.setString(7, uuid(73).toString());
+      insert.setString(8, futurePayload);
+      insert.executeUpdate();
+    }
+    var retained = reopened.unitOfWork().transact(tx -> tx.events().findAfter(2, 10).getFirst());
+    assertEquals(42, retained.schemaVersion());
+    assertEquals(futurePayload, retained.payloadJson());
+  }
+
+  @Test
+  void simulatedCommitFailureRollsBackAggregateAndItsEvent() {
+    var database = SqliteDatabase.create(temp.resolve("commit-failure.db"));
+    var failingUnitOfWork =
+        new SqliteUnitOfWork(
+            database,
+            connection -> {
+              throw new SQLException("simulated commit failure");
+            });
+    UUID cardId = uuid(74);
+    var draft = MainCard.createDraft(cardId, NOW);
+    assertThrows(
+        PersistenceException.class,
+        () ->
+            failingUnitOfWork.transact(
+                tx -> {
+                  tx.mainCards().insertDraft(draft);
+                  return null;
+                }));
+
+    var counts =
+        database
+            .unitOfWork()
+            .transact(
+                tx ->
+                    List.of(
+                        tx.mainCards().findById(cardId).isPresent(),
+                        tx.events().findAfter(0, 10).size()));
+    assertEquals(List.of(false, 0), counts);
   }
 
   @Test

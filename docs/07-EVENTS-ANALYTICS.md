@@ -37,6 +37,20 @@ Recommended event taxonomy:
 
 State tables + append-only events share canonical SQLite file. Events represent audit history; do not force complex replay to bootstrap the interactive UI in v1. Export/analytics graph projections can be regenerated from canonical tables + journal. No second writable state store in v1.
 
+The SQLite adapter writes one minimal schema-version-1 event in the same transaction
+as each implemented draft create/edit/install/annotation, authored reference, Index
+card, imported bibliographic source, or BibCard mutation. Event IDs and correlation
+IDs are UUIDs; the database assigns the global sequence; timestamps are UTC ISO-8601.
+Payloads avoid card text and retain only identifiers and small provenance fields.
+The journal reader returns unknown positive schema versions and payload JSON without
+interpreting or rewriting them, so a later exporter can preserve them. Mutations not
+yet implemented as application operations (including BibNote and import batches)
+will add their corresponding events with those operations.
+
+`src/test/resources/fixtures/events/card-installed-v1.json` is the representative
+portable envelope fixture. Event rows are append-only and are not a replay source
+for starting the interactive UI.
+
 Graph edge namespaces (do not confuse):
 - \`AUTHORED_CARD_REFERENCE\` directed, multiedge, preserves literal and span/run.
 - \`AUTHORED_INDEX_POINTER\` selective user-authored index -> Main.
