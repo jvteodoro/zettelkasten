@@ -12,6 +12,13 @@ address only when source placement exists. Target existence and stable-ID lookup
 belong to application/storage; domain values do not expose follow or backlink
 operations.
 
+ZK-07 adds `MainCardService` as the Desk/Main application boundary. It owns
+transactions for draft creation/edit, intentional install, and annotations, and
+exposes exact-address and physical-order queries. Install snapshots the immediate
+ordered predecessor and successor. These neighbors describe filing order only;
+the service offers no reference traversal, automatic address selection, or
+semantic relationship query.
+
 ## Aggregates
 
 ### MainCard
