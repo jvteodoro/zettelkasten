@@ -56,3 +56,13 @@ When reading Main, N/P move to adjacent cards **without invoking a graph link tr
 - A duplicate/invalid address does not lose draft nor change current Main listing.
 - Index list ordering stays authored temporal order even when entered out-of-alphabet order.
 - Screens satisfy narrow (80×24) and wide (120×35) smoke test fixtures.
+
+## Current implementation slice
+
+ZK-08 supplies the responsive Lanterna shell, Desk draft editing and manual Main
+filing. `open --db FILE` opens an existing SQLite archive; it does not initialize
+one. Index and Bib currently have navigable informational screens while their
+entry workflows arrive in later issues. The exact bindings are maintained in
+`src/main/resources/keymap.txt` and shown by the `?` help screen. The editor uses
+an 825-codepoint configurable soft limit, warns beginning 25 codepoints early,
+and never truncates. Ctrl+L/K/E are literal prompts; lower-case `l` remains text.

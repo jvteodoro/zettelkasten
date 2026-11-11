@@ -17,3 +17,6 @@ Ctrl+L  Insert literal card reference
 Ctrl+K  Insert literal Index keyterm reference
 Ctrl+E  Insert literal external bibliographic reference
 Esc     Cancel dialog / return
+Enter   Confirm a literal prompt / insert a newline in the editor
+Arrows  Move the editor cursor or select a Desk/Main neighbor
+F       File the selected Desk draft at a manually entered address

@@ -2,7 +2,7 @@
 
 A Java terminal application that reproduces the *working constraints* of a physical Antinet Zettelkasten while preserving machine-readable structure for long-term archival and optional future analytics.
 
-**Status:** implementation in progress. The Java 25 Maven build and honest CLI scaffold are in place; Desk/Main/Index/Bib workflows are being implemented issue by issue. See [Implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md).
+**Status:** implementation in progress. The Java 25 Maven build, SQLite persistence layer, Desk/Main application services, and initial Lanterna shell/editor are in place; Index and Bibliography workflows and maintenance commands continue issue by issue. See [Implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md).
 
 ## Product boundaries
 
@@ -15,7 +15,7 @@ A Java terminal application that reproduces the *working constraints* of a physi
 
 ## Current command-line scaffold
 
-The runnable jar supports `--help` and `--version`. Archive operations and the TUI are not yet available; invoking a planned command reports that clearly and does not create or open a database.
+The runnable jar supports `--help`, `--version`, and `open --db FILE`. `open` requires an existing archive and never creates a database. Use `D` for Desk, `M` for Main, `I` for Index, `B` for Bib, `?` for help, and `Q` to quit. Draft editor shortcuts are listed in [`keymap.txt`](src/main/resources/keymap.txt). `init` and maintenance commands are still planned.
 
 ## Planned first use (after implementation)
 
