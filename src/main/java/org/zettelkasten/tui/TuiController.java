@@ -9,6 +9,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.zettelkasten.application.AddressConflictException;
 import org.zettelkasten.application.MainCardService;
+import org.zettelkasten.application.OrderedNeighbors;
 import org.zettelkasten.domain.BodyRun;
 import org.zettelkasten.domain.MainCard;
 
@@ -165,8 +166,9 @@ public final class TuiController {
         lines.add("Ctrl+L card reference  Ctrl+K keyterm  Ctrl+E ExRef  Ctrl+S Save  Esc Back");
       }
       case INSTALL_ADDRESS -> {
-        lines.add("Choose a numeric-alpha address manually. No suggestions are shown.");
+        lines.add("Choose a numeric-alpha address manually. No address suggestions are shown.");
         lines.add("Address: " + addressInput);
+        if (!addressInput.isEmpty()) lines.addAll(insertionContext(addressInput.toString()));
         lines.add("Enter Install    Esc Cancel");
       }
       case MAIN -> {
@@ -325,7 +327,11 @@ public final class TuiController {
       }
     } else {
       try {
-        MainCard exact = cards.getMainByExactAddress(addressInput.toString()).orElseThrow();
+        MainCard exact = cards.getMainByExactAddress(addressInput.toString()).orElse(null);
+        if (exact == null) {
+          status = "No Main card is filed at exactly '" + addressInput + "'.";
+          return;
+        }
         refreshInstalled();
         selectedMain = 0;
         for (int index = 0; index < installed.size(); index++) {
@@ -337,8 +343,23 @@ public final class TuiController {
         screen = Screen.MAIN;
         status = "Positioned at " + exact.addressLiteral() + ".";
       } catch (RuntimeException exception) {
-        status = "No exact Main address match. " + safeMessage(exception);
+        status = "Address could not be read: " + safeMessage(exception);
       }
+    }
+  }
+
+  private List<String> insertionContext(String proposedAddress) {
+    try {
+      if (cards.getMainByExactAddress(proposedAddress).isPresent())
+        return List.of("This exact address is already occupied.");
+      OrderedNeighbors neighbors = cards.getInsertionNeighbors(proposedAddress);
+      return List.of(
+          "Previous physical card: "
+              + neighbors.predecessor().map(MainCard::addressLiteral).orElse("none"),
+          "Next physical card: "
+              + neighbors.successor().map(MainCard::addressLiteral).orElse("none"));
+    } catch (IllegalArgumentException exception) {
+      return List.of("Enter a complete ANTINET_SLASH_V1 address to inspect drawer neighbors.");
     }
   }
 

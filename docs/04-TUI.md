@@ -59,8 +59,11 @@ When reading Main, N/P move to adjacent cards **without invoking a graph link tr
 
 ## Current implementation slice
 
-ZK-08 supplies the responsive Lanterna shell, Desk draft editing and manual Main
-filing. `open --db FILE` opens an existing SQLite archive; it does not initialize
+ZK-08/09 supply the responsive Lanterna shell, Desk draft editing and manual Main
+filing. The install prompt shows the immediate physical neighbor addresses around
+a fully parsed proposed address, without selecting or filling the address. Exact
+Main lookups report a missing address without offering alternatives.
+`open --db FILE` opens an existing SQLite archive; it does not initialize
 one. Index and Bib currently have navigable informational screens while their
 entry workflows arrive in later issues. The exact bindings are maintained in
 `src/main/resources/keymap.txt` and shown by the `?` help screen. The editor uses

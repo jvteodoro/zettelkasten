@@ -34,7 +34,7 @@ The implementation must validate nested/number-alpha alternation cases in fixtur
 
 A Main card has immutable chosen canonical address and captured insertion context. For v1 the globally displayed ordering is the **address scheme comparator**; if the UI allows an explicit physical insertion overriding that order, persist a separate \`filing_position\` sortable key (e.g. fractional rank or sequence labels) and ensure no collateral address changes. Do not conflate an address comparator with a global NEXT graph edge: next/previous are derived from ordered storage or an explicit nonsemantic adjacency index, not user-authored semantic links.
 
-Place a card in a requested address without requiring all its address prefixes to exist. Installation UI may show immediate predecessor/successor **because these are analog physical neighbors**; never recommend a new address automatically.
+Place a card in a requested address without requiring all its address prefixes to exist. Installation UI may show immediate predecessor/successor **because these are analog physical neighbors**; never recommend a new address automatically. The prompt may preview the cards immediately before and after a fully typed, valid, unoccupied proposed address. This is read-only context: the user's literal is never filled or changed, and a missing exact lookup offers no alternative address.
 
 Persist insertion snapshot \`predecessor_card_id\`, \`successor_card_id\`, \`scheme_version\`, \`raw_address\`, \`canonical_address\`, \`installed_at\`. A historic snapshot must not be recomputed after subsequent insertions.
 

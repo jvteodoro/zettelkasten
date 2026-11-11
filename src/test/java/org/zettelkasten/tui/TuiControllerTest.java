@@ -134,6 +134,38 @@ class TuiControllerTest {
     assertTrue(closed.get());
   }
 
+  @Test
+  void filePromptShowsPhysicalNeighborsAndMissingExactLookupOffersNoAlternative() {
+    var database = database();
+    var service = service(database);
+    var left = service.createDraft(List.of());
+    var right = service.createDraft(List.of());
+    service.installMainCard(left.id(), 0, "3118/2");
+    service.installMainCard(right.id(), 0, "3118/3");
+    service.createDraft(List.of());
+    var controller = new TuiController(service, sequence(700));
+    controller.handle(character('d'));
+    controller.handle(character('f'));
+    type(controller, "3118/2a");
+    List<String> prompt = controller.viewLines();
+    assertTrue(prompt.contains("Address: 3118/2a"));
+    assertTrue(prompt.contains("Previous physical card: 3118/2"));
+    assertTrue(prompt.contains("Next physical card: 3118/3"));
+    controller.handle(key(KeyType.Enter));
+    assertEquals(
+        List.of("3118/2", "3118/2a", "3118/3"),
+        service.getInstalledInAddressOrder().stream().map(card -> card.addressLiteral()).toList());
+
+    controller.handle(key(KeyType.Escape));
+    controller.handle(character('m'));
+    controller.handle(character('g'));
+    type(controller, "3118/9");
+    controller.handle(key(KeyType.Enter));
+    assertEquals(TuiController.Screen.MAIN_ADDRESS, controller.screen());
+    assertTrue(controller.status().contains("No Main card is filed at exactly '3118/9'"));
+    assertFalse(controller.status().contains("3118/3"));
+  }
+
   private SqliteDatabase database() {
     return SqliteDatabase.create(
         temp.resolve("tui.db"), Clock.fixed(NOW, ZoneOffset.UTC), sequence(1));

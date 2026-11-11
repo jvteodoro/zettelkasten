@@ -59,16 +59,9 @@ public final class MainCardService {
           }
           MainCard installed = current.install(address, clock.instant());
           List<MainCard> ordered = tx.mainCards().findInstalledInAddressOrder();
-          UUID predecessor = null;
-          UUID successor = null;
-          for (MainCard neighbor : ordered) {
-            int comparison = neighbor.address().compareTo(address);
-            if (comparison < 0) predecessor = neighbor.id();
-            else if (comparison > 0) {
-              successor = neighbor.id();
-              break;
-            }
-          }
+          OrderedNeighbors neighbors = insertionNeighbors(ordered, address);
+          UUID predecessor = neighbors.predecessor().map(MainCard::id).orElse(null);
+          UUID successor = neighbors.successor().map(MainCard::id).orElse(null);
           PlacementSnapshot placement =
               new PlacementSnapshot(
                   cardId, address, predecessor, successor, installed.installedAt());
@@ -103,6 +96,13 @@ public final class MainCardService {
     return unitOfWork.transact(tx -> tx.mainCards().findInstalledInAddressOrder());
   }
 
+  /** Preview the physical neighbors around a proposed address without selecting or assigning it. */
+  public OrderedNeighbors getInsertionNeighbors(String addressLiteral) {
+    NumericAlphaAddress address = NumericAlphaAddress.parse(addressLiteral);
+    return unitOfWork.transact(
+        tx -> insertionNeighbors(tx.mainCards().findInstalledInAddressOrder(), address));
+  }
+
   public OrderedNeighbors getOrderedNeighbors(String addressLiteral) {
     NumericAlphaAddress address = NumericAlphaAddress.parse(addressLiteral);
     return unitOfWork.transact(
@@ -129,5 +129,20 @@ public final class MainCardService {
 
   private static MainCard requireCard(Optional<MainCard> card, UUID id) {
     return card.orElseThrow(() -> new MainCardNotFoundException(id));
+  }
+
+  private static OrderedNeighbors insertionNeighbors(
+      List<MainCard> ordered, NumericAlphaAddress address) {
+    MainCard predecessor = null;
+    MainCard successor = null;
+    for (MainCard neighbor : ordered) {
+      int comparison = neighbor.address().compareTo(address);
+      if (comparison < 0) predecessor = neighbor;
+      else if (comparison > 0) {
+        successor = neighbor;
+        break;
+      }
+    }
+    return new OrderedNeighbors(Optional.ofNullable(predecessor), Optional.ofNullable(successor));
   }
 }

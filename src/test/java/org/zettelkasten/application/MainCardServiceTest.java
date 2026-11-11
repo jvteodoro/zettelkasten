@@ -56,6 +56,9 @@ class MainCardServiceTest {
     MainCard middle = service.createDraft(List.of(new TextRun(uuid(94), "middle")));
     service.installMainCard(left.id(), 0, "3118/2");
     service.installMainCard(right.id(), 0, "3118/3");
+    var insertionNeighbors = service.getInsertionNeighbors("3118/2a");
+    assertEquals(left.id(), insertionNeighbors.predecessor().orElseThrow().id());
+    assertEquals(right.id(), insertionNeighbors.successor().orElseThrow().id());
     MainCard installed = service.installMainCard(middle.id(), 0, "3118/2a");
 
     assertEquals(middle.id(), installed.id());
