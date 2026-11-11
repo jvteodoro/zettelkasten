@@ -28,30 +28,21 @@ jobs:
     needs: structure
     steps:
       - uses: actions/checkout@v4
-      - name: Check Java scaffold
-        id: scaffold
-        shell: bash
-        run: |
-          if test -f pom.xml; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
       - name: Set up JDK 25
-        if: steps.scaffold.outputs.present == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
       - name: Verify active JDK 25
-        if: steps.scaffold.outputs.present == 'true'
         shell: bash
         run: |
           java -version
           test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^[[:space:]]*java.specification.version = //p' | head -n1)" = "25"
       - name: Maven verify
-        if: steps.scaffold.outputs.present == 'true'
         run: mvn -B verify
-      - name: Scaffold pending
-        if: steps.scaffold.outputs.present != 'true'
-        run: echo "ZK-01 will introduce pom.xml; Java build not yet run."
+      - name: Packaged CLI smoke test
+        run: java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar --help
       - name: Upload failing reports
         if: failure()
         uses: actions/upload-artifact@v4

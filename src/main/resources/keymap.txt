@@ -1,0 +1,19 @@
+# Canonical command/keymap reference. Screen-specific keys are described in docs/04-TUI.md.
+D    Desk
+M    Main
+I    Index
+B    Bibliography
+?    Help
+Q    Quit (confirm unsaved draft)
+
+Main:
+G    Enter exact address
+N    Next physical neighbor
+P    Previous physical neighbor
+
+Editor:
+Ctrl+S  Save draft
+Ctrl+L  Insert literal card reference
+Ctrl+K  Insert literal Index keyterm reference
+Ctrl+E  Insert literal external bibliographic reference
+Esc     Cancel dialog / return

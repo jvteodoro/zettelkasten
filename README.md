@@ -2,7 +2,7 @@
 
 A Java terminal application that reproduces the *working constraints* of a physical Antinet Zettelkasten while preserving machine-readable structure for long-term archival and optional future analytics.
 
-**Status:** architecture and agent handoff; core application is not yet implemented. See [Implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md).
+**Status:** implementation in progress. The Java 25 Maven build and honest CLI scaffold are in place; Desk/Main/Index/Bib workflows are being implemented issue by issue. See [Implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md).
 
 ## Product boundaries
 
@@ -13,7 +13,11 @@ A Java terminal application that reproduces the *working constraints* of a physi
 - Structured link spans and provenance are recorded internally for archival fidelity; no graph-analysis screen is exposed in the core product.
 - Java 25 LTS, Lanterna terminal UI, embedded SQLite file, imported BibTeX, future opt-in Zotero integration.
 
-## First use (when application is implemented)
+## Current command-line scaffold
+
+The runnable jar supports `--help` and `--version`. Archive operations and the TUI are not yet available; invoking a planned command reports that clearly and does not create or open a database.
+
+## Planned first use (after implementation)
 
 The planned CLI is:
 
@@ -25,7 +29,7 @@ zettelkasten backup --db ~/zettelkasten/slipbox.db --out ~/backups/slipbox-2026-
 zettelkasten export --db ~/zettelkasten/slipbox.db --out ~/backups/slipbox-export/
 ~~~
 
-These commands are **contract targets**, not presently functional. The project accepts a separate storage path; the only required persistent application database is an embedded local SQLite file (SQLite may create transient WAL/SHM sidecars while open).
+The eventual application accepts a separate storage path; the only required persistent application database is an embedded local SQLite file (SQLite may create transient WAL/SHM sidecars while open).
 
 ## Documentation map
 
@@ -53,11 +57,12 @@ This is an **intentional digital experiment**. We do **not** claim that keyboard
 
 ## Development
 
-Install **JDK 25** and Maven 3.9+ (Java 21 is intentionally not a build target). Then run:
+Install **JDK 25** (Java 21 is intentionally rejected) and Maven 3.9+. Then run:
 
 ~~~sh
 mvn -B verify
 bash scripts/install-git-hooks.sh
+java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar --help
 ~~~
 
 See [Developer operations](docs/11-DEVELOPER-OPERATIONS.md). Hooks are local convenience checks; GitHub Actions is the authoritative CI gate.
