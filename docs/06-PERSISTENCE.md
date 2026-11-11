@@ -1,5 +1,14 @@
 # Storage and SQL consistency specification (SQLite canonical)
 
+The initial Java adapter uses checksum-verified numbered SQL resources. Draft body
+runs and annotation runs share a non-null `run_containers` parent; `(container_id,
+run_order)` is unique, so SQLite's nullable-`UNIQUE` behavior cannot weaken run
+ordering. Installation, placement, address uniqueness and annotations are enforced
+both in the repository transaction and with database constraints/triggers.
+The stored placement sort key encodes arbitrary-precision numeric token lengths,
+letter tokens, suffixes and path prefixes so SQL ordering agrees with the v1
+semantic comparator.
+
 ## Persistence contract
 
 Single embedded SQLite database (e.g. \`slipbox.db\`) is the **canonical store**. WAL may create transient \`-wal\` and \`-shm\` files; explain this to users. No application service or DB server. Support one writer application per file; second writer receives a clear lock error/read-only option. Use Xerial SQLite JDBC (pin version via Maven and verify compatible Java), Flyway community or hand-rolled numbered immutable migrations, never ORM auto-DDL. Implement reusable JDBC repositories with prepared statements.

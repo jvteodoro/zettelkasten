@@ -1,6 +1,6 @@
 # ADR 0001: SQLite is the only canonical store
 
-Status: Accepted (design, pending implementation) — 2026-11-11.
+Status: Accepted; implementation in progress — 2026-11-11.
 
 ## Context
 The product is a durable, local, no-server archive. Although authored references form a multigraph, the interactive app primarily performs exact-address lookup, ordered drawer browsing, append-only notes, import, transactional filing and index inspection.

@@ -40,12 +40,31 @@ public final class MainCard {
     this.installedAt = installedAt;
     this.installedBodyRevision = installedBodyRevision;
     this.annotations = List.copyOf(Objects.requireNonNull(annotations, "annotations"));
-    if (state == CardState.DRAFT && (address != null || installedAt != null)) {
+    if (state == CardState.DRAFT
+        && (address != null
+            || installedAt != null
+            || installedBodyRevision != -1
+            || !this.annotations.isEmpty())) {
       throw new IllegalArgumentException("Draft cards cannot have an address or install time");
     }
     if (state == CardState.INSTALLED && (address == null || installedAt == null)) {
       throw new IllegalArgumentException(
           "Installed cards require a chosen address and install time");
+    }
+    if (state == CardState.INSTALLED && installedBodyRevision != revision) {
+      throw new IllegalArgumentException(
+          "Installed body revision must match the frozen draft revision");
+    }
+    Set<UUID> annotationIds = new HashSet<>();
+    Set<UUID> runIds = new HashSet<>();
+    this.authoredBody.forEach(run -> runIds.add(run.id()));
+    for (CardAnnotation annotation : this.annotations) {
+      if (!annotationIds.add(annotation.id()))
+        throw new IllegalArgumentException("Annotation IDs must be unique");
+      for (BodyRun run : annotation.runs()) {
+        if (!runIds.add(run.id()))
+          throw new IllegalArgumentException("Run IDs must be unique within a card aggregate");
+      }
     }
   }
 
@@ -55,6 +74,29 @@ public final class MainCard {
 
   public static MainCard createDraft(UUID id, Instant createdAt, List<BodyRun> initialBody) {
     return new MainCard(id, createdAt, CardState.DRAFT, 0, initialBody, null, null, -1, List.of());
+  }
+
+  /** Rebuild a validated aggregate from canonical persistence rows. */
+  public static MainCard rehydrate(
+      UUID id,
+      Instant createdAt,
+      CardState state,
+      long revision,
+      List<BodyRun> authoredBody,
+      NumericAlphaAddress address,
+      Instant installedAt,
+      long installedBodyRevision,
+      List<CardAnnotation> annotations) {
+    return new MainCard(
+        id,
+        createdAt,
+        state,
+        revision,
+        authoredBody,
+        address,
+        installedAt,
+        installedBodyRevision,
+        annotations);
   }
 
   /** Replace a draft body with an optimistic revision check. */

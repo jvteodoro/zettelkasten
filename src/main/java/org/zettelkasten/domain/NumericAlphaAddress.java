@@ -68,6 +68,16 @@ public final class NumericAlphaAddress implements Comparable<NumericAlphaAddress
     return digits.length() > 1 && digits.charAt(0) == '0';
   }
 
+  private static void appendNumericKey(StringBuilder target, BigInteger value) {
+    String digits = value.toString();
+    target.append(String.format(Locale.ROOT, "%03d", digits.length())).append(digits);
+  }
+
+  private static void appendHexByte(StringBuilder target, char value) {
+    target.append(Character.forDigit((value >>> 4) & 0x0f, 16));
+    target.append(Character.forDigit(value & 0x0f, 16));
+  }
+
   public String literal() {
     return literal;
   }
@@ -78,6 +88,26 @@ public final class NumericAlphaAddress implements Comparable<NumericAlphaAddress
 
   public AddressScheme scheme() {
     return AddressScheme.ANTINET_SLASH_V1;
+  }
+
+  /** Lexicographically sortable stable key matching {@link #compareTo(NumericAlphaAddress)}. */
+  public String sortKey() {
+    StringBuilder key = new StringBuilder();
+    for (Segment segment : segments) {
+      appendNumericKey(key, segment.number());
+      for (int index = 0; index < segment.letters().length(); index++) {
+        appendHexByte(key, segment.letters().charAt(index));
+      }
+      key.append("00");
+      if (segment.suffix() == null) {
+        key.append("00");
+      } else {
+        key.append("01");
+        appendNumericKey(key, segment.suffix());
+      }
+      key.append('/');
+    }
+    return key.toString();
   }
 
   @Override

@@ -122,6 +122,21 @@ class NumericAlphaAddressTest {
   }
 
   @Test
+  void sortKeyMatchesSemanticComparatorForSeededAddresses() {
+    var random = new Random(0x2201L);
+    List<NumericAlphaAddress> values = new ArrayList<>();
+    for (int index = 0; index < 300; index++)
+      values.add(NumericAlphaAddress.parse(randomAddress(random)));
+    var byComparator = values.stream().distinct().sorted().toList();
+    var bySortKey =
+        values.stream()
+            .distinct()
+            .sorted(Comparator.comparing(NumericAlphaAddress::sortKey))
+            .toList();
+    assertEquals(byComparator, bySortKey);
+  }
+
+  @Test
   void checkedInFixturesAreExecutableContracts() throws Exception {
     var valid = getClass().getResourceAsStream("/fixtures/addresses/v1-valid.tsv");
     assertNotNull(valid);
