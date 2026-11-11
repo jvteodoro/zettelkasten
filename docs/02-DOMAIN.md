@@ -1,5 +1,11 @@
 # Domain specification and invariants
 
+The pure Java implementation in `org.zettelkasten.domain` starts with `MainCard`,
+immutable typed body runs, append-only `CardAnnotation`, and stable Index/Bib card
+identities. Lists are copied at aggregate boundaries; order in a body is authored
+run order. Dedicated address parsing and reference-resolution types are added in
+ZK-03 and ZK-04; persistence and UI remain outside this package.
+
 ## Aggregates
 
 ### MainCard
