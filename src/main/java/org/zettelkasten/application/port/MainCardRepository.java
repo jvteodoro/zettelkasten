@@ -24,6 +24,8 @@ public interface MainCardRepository {
 
   void updateDraft(MainCard draft, long expectedRevision);
 
+  void discardDraft(UUID cardId, long expectedRevision, java.time.Instant discardedAt);
+
   void install(MainCard installed, PlacementSnapshot placement, long expectedDraftRevision);
 
   void appendAnnotation(UUID cardId, CardAnnotation annotation);

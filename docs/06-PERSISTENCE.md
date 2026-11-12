@@ -26,6 +26,12 @@ references, preserving each run ID, literal, and reference type. It records one
 backfill event per projected occurrence; normal draft, install, and annotation
 operations maintain these projections in the same unit of work as their card rows.
 
+Migration V005 adds `cards.discarded_at`. A confirmed Desk discard sets this timestamp
+and appends `DraftDiscarded` in one transaction. The card and authored runs remain
+available by stable UUID for audit and portable export; Desk listings omit tombstones.
+Database triggers prevent a tombstoned card from receiving edits, runs, annotations,
+or a placement.
+
 Opening an existing archive validates its current migration checksums and refuses
 an older schema without modifying it. `migrate --dry-run` reports the pending
 versions; `migrate --apply` first writes a verified sibling SQLite backup and

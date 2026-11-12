@@ -53,6 +53,17 @@ public final class MainCardService {
         });
   }
 
+  public void discardDraft(UUID cardId, long expectedRevision) {
+    Objects.requireNonNull(cardId, "cardId");
+    unitOfWork.transact(
+        tx -> {
+          MainCard current = requireCard(tx.mainCards().findById(cardId), cardId);
+          current.discard();
+          tx.mainCards().discardDraft(cardId, expectedRevision, clock.instant());
+          return null;
+        });
+  }
+
   /** Validate the manually chosen dialect before opening a transaction; never assign an address. */
   public MainCard installMainCard(UUID cardId, long expectedRevision, String addressLiteral) {
     Objects.requireNonNull(cardId, "cardId");

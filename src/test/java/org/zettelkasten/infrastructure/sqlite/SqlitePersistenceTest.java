@@ -58,7 +58,7 @@ class SqlitePersistenceTest {
     Path path = temp.resolve("slipbox.db");
     SqliteDatabase database = SqliteDatabase.create(path);
     assertTrue(Files.isRegularFile(path));
-    assertEquals(4, database.schemaVersion());
+    assertEquals(5, database.schemaVersion());
     try (var connection = database.newConnection();
         Statement statement = connection.createStatement();
         var foreignKeys = statement.executeQuery("PRAGMA foreign_keys")) {
@@ -92,6 +92,9 @@ class SqlitePersistenceTest {
       assertEquals(64, migration.getString(2).length());
       assertTrue(migration.next());
       assertEquals(4, migration.getInt(1));
+      assertEquals(64, migration.getString(2).length());
+      assertTrue(migration.next());
+      assertEquals(5, migration.getInt(1));
       assertEquals(64, migration.getString(2).length());
       assertFalse(migration.next());
     }
@@ -633,12 +636,12 @@ class SqlitePersistenceTest {
       statement.execute("PRAGMA user_version = 0");
     }
     assertThrows(PersistenceException.class, () -> SqliteDatabase.open(path));
-    assertEquals(4, ArchiveOperations.pendingMigrations(path).size());
+    assertEquals(5, ArchiveOperations.pendingMigrations(path).size());
     var safetyCopy = ArchiveOperations.backupBeforeMigration(path, temp.resolve("v0-safety.db"));
     assertTrue(Files.isRegularFile(safetyCopy));
-    assertEquals(4, SqliteDatabase.migrate(path));
+    assertEquals(5, SqliteDatabase.migrate(path));
     var migrated = SqliteDatabase.open(path);
-    assertEquals(4, migrated.schemaVersion());
+    assertEquals(5, migrated.schemaVersion());
     boolean noDrafts = migrated.unitOfWork().transact(tx -> tx.mainCards().findDrafts().isEmpty());
     assertTrue(noDrafts);
     try (var connection = migrated.newConnection();
@@ -680,8 +683,8 @@ class SqlitePersistenceTest {
     }
 
     Path backup = ArchiveOperations.backupBeforeMigration(path, temp.resolve("v3-backup.db"));
-    assertEquals(1, ArchiveOperations.pendingMigrations(path).size());
-    assertEquals(4, SqliteDatabase.migrate(path));
+    assertEquals(2, ArchiveOperations.pendingMigrations(path).size());
+    assertEquals(5, SqliteDatabase.migrate(path));
     try (var connection = DriverManager.getConnection("jdbc:sqlite:" + path);
         var query = connection.createStatement();
         var reference =

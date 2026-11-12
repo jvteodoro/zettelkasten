@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /** Applies immutable, ordered SQL migrations and refuses changed or future schemas. */
 final class MigrationRunner {
-  static final int CURRENT_VERSION = 4;
+  static final int CURRENT_VERSION = 5;
   private static final List<Migration> MIGRATIONS =
       List.of(
           new Migration(1, "canonical SQLite schema", "/db/migration/V001__canonical_sqlite.sql"),
@@ -33,7 +33,11 @@ final class MigrationRunner {
           new Migration(
               4,
               "Backfill authored reference projections from typed runs",
-              "/db/migration/V004__backfill_authored_reference_projections.sql"));
+              "/db/migration/V004__backfill_authored_reference_projections.sql"),
+          new Migration(
+              5,
+              "Auditable Desk draft discard tombstones",
+              "/db/migration/V005__draft_discard_tombstones.sql"));
 
   int migrate(Connection connection) throws SQLException {
     return migrateThrough(connection, MIGRATIONS.getLast().version());

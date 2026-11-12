@@ -42,6 +42,7 @@ public final class TuiController {
     INSTALL_ADDRESS,
     MAIN_ADDRESS,
     CONFIRM_DISCARD,
+    CONFIRM_SAVED_DRAFT_DISCARD,
     INDEX_LIST_CARD,
     KEYTERM_CARDS,
     KEYTERM_CARD,
@@ -153,6 +154,10 @@ public final class TuiController {
       handleDiscardConfirmation(key);
       return;
     }
+    if (screen == Screen.CONFIRM_SAVED_DRAFT_DISCARD) {
+      handleSavedDraftDiscardConfirmation(key);
+      return;
+    }
     if (screen == Screen.INSTALL_ADDRESS || screen == Screen.MAIN_ADDRESS) {
       handleAddressPrompt(key);
       return;
@@ -198,6 +203,7 @@ public final class TuiController {
         switch (value) {
           case 'n' -> createDraft();
           case 'f' -> beginAddressPrompt(Screen.INSTALL_ADDRESS);
+          case 'x' -> beginSavedDraftDiscard();
           default -> {}
         }
       } else if (screen == Screen.MAIN) {
@@ -309,7 +315,7 @@ public final class TuiController {
         lines.add("Q  Quit");
       }
       case DESK -> {
-        lines.add("Drafts: " + drafts.size() + "    N New    Enter Edit    F File");
+        lines.add("Drafts: " + drafts.size() + "    N New    Enter Edit    F File    X Discard");
         if (drafts.isEmpty()) lines.add("The Desk is empty.");
         for (int index = 0; index < drafts.size(); index++) {
           MainCard draft = drafts.get(index);
@@ -476,6 +482,11 @@ public final class TuiController {
       case CONFIRM_DISCARD -> {
         lines.add("Unsaved edits are in memory. Save them before returning to the Desk?");
         lines.add("Y Save    N Discard these unsaved edits    Esc Continue editing");
+      }
+      case CONFIRM_SAVED_DRAFT_DISCARD -> {
+        lines.add(
+            "Discard this saved Desk draft? Its content will remain in the archive tombstone.");
+        lines.add("Y Discard draft    N or Esc Keep draft");
       }
     }
     return List.copyOf(lines);
@@ -854,6 +865,34 @@ public final class TuiController {
     editor = new EditorBuffer(currentDraft.authoredBody(), ids);
     screen = Screen.EDITOR;
     status = "";
+  }
+
+  private void beginSavedDraftDiscard() {
+    refreshDrafts();
+    if (drafts.isEmpty()) return;
+    currentDraft = drafts.get(selectedDraft);
+    screen = Screen.CONFIRM_SAVED_DRAFT_DISCARD;
+  }
+
+  private void handleSavedDraftDiscardConfirmation(KeyStroke key) {
+    if (key.getKeyType() == KeyType.Escape
+        || (key.getKeyType() == KeyType.Character
+            && Character.toLowerCase(key.getCharacter()) == 'n')) {
+      screen = Screen.DESK;
+      return;
+    }
+    if (key.getKeyType() == KeyType.Character && Character.toLowerCase(key.getCharacter()) == 'y') {
+      try {
+        cards.discardDraft(currentDraft.id(), currentDraft.revision());
+        status = "Saved Desk draft discarded and retained in the archive tombstone.";
+        refreshDrafts();
+        screen = Screen.DESK;
+      } catch (RuntimeException exception) {
+        status = safeMessage(exception);
+        refreshDrafts();
+        screen = Screen.DESK;
+      }
+    }
   }
 
   private void handleEditor(KeyStroke key) {

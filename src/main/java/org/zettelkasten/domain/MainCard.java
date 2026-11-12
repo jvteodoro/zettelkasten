@@ -51,6 +51,9 @@ public final class MainCard {
       throw new IllegalArgumentException(
           "Installed cards require a chosen address and install time");
     }
+    if (state == CardState.DISCARDED
+        && (address != null || installedAt != null || !this.annotations.isEmpty()))
+      throw new IllegalArgumentException("Discarded drafts cannot have filing data or annotations");
     if (state == CardState.INSTALLED && installedBodyRevision != revision) {
       throw new IllegalArgumentException(
           "Installed body revision must match the frozen draft revision");
@@ -125,6 +128,13 @@ public final class MainCard {
         Objects.requireNonNull(time, "time"),
         revision,
         annotations);
+  }
+
+  /** Mark a saved Desk draft discarded while retaining its authored body for audit. */
+  public MainCard discard() {
+    requireDraft();
+    return new MainCard(
+        id, createdAt, CardState.DISCARDED, revision, authoredBody, null, null, -1, List.of());
   }
 
   /** Append an immutable addendum without changing the installed body snapshot. */

@@ -102,6 +102,29 @@ class TuiControllerTest {
   }
 
   @Test
+  void savedDeskDraftDiscardRequiresConfirmationAndRetainsTombstone() {
+    var database = database();
+    var service = service(database);
+    var saved =
+        service.createDraft(
+            List.of(new org.zettelkasten.domain.TextRun(new UUID(0, 777), "keep audit")));
+    var controller = new TuiController(service, sequence(780));
+    controller.handle(character('d'));
+    controller.handle(character('x'));
+    assertEquals(TuiController.Screen.CONFIRM_SAVED_DRAFT_DISCARD, controller.screen());
+    controller.handle(character('n'));
+    assertEquals(1, service.getDrafts().size());
+    controller.handle(character('x'));
+    controller.handle(character('y'));
+    assertEquals(TuiController.Screen.DESK, controller.screen());
+    assertTrue(service.getDrafts().isEmpty());
+    var retained =
+        database.unitOfWork().transact(tx -> tx.mainCards().findById(saved.id()).orElseThrow());
+    assertEquals(org.zettelkasten.domain.CardState.DISCARDED, retained.state());
+    assertEquals("keep audit", retained.authoredBody().getFirst().literal());
+  }
+
+  @Test
   void responsiveWrappingHandlesReferenceSizesUnicodeAndUntrustedControlCharacters() {
     List<String> source = List.of("Português 漢字 e\u0301", "unsafe\u001b[31m text");
     for (var size : List.of(new int[] {78, 18}, new int[] {118, 29})) {

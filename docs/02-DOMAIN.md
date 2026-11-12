@@ -22,7 +22,7 @@ semantic relationship query.
 ## Aggregates
 
 ### MainCard
-- id: UUID (stable), type MAIN, state DRAFT | INSTALLED.
+- id: UUID (stable), type MAIN, state DRAFT | INSTALLED | DISCARDED.
 - draftRevision monotonically increases for desk editing.
 - authoredBody: ordered list of block/run records (text, literal card reference, keyterm reference, external reference); stable run ID and sequence; Unicode allowed.
 - createdAt UTC, installedAt nullable, chosenAddress nullable for DRAFT; installedBodySnapshot revision immutable.

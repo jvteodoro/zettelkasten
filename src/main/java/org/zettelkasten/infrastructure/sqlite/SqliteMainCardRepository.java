@@ -40,7 +40,7 @@ final class SqliteMainCardRepository implements MainCardRepository {
     Objects.requireNonNull(id, "id");
     try (PreparedStatement query =
         connection.prepareStatement(
-            "SELECT id, created_at, state, revision, installed_at, installed_body_revision "
+            "SELECT id, created_at, state, revision, installed_at, installed_body_revision, discarded_at "
                 + "FROM cards WHERE id=? AND kind='MAIN'")) {
       query.setString(1, id.toString());
       try (ResultSet row = query.executeQuery()) {
@@ -69,7 +69,8 @@ final class SqliteMainCardRepository implements MainCardRepository {
   @Override
   public List<MainCard> findDrafts() {
     return list(
-        "SELECT id FROM cards WHERE kind='MAIN' AND state='DRAFT' ORDER BY created_at,id", null);
+        "SELECT id FROM cards WHERE kind='MAIN' AND state='DRAFT' AND discarded_at IS NULL ORDER BY created_at,id",
+        null);
   }
 
   @Override
@@ -124,6 +125,25 @@ final class SqliteMainCardRepository implements MainCardRepository {
           "DraftEdited", "MAIN_CARD", draft.id(), "{\"revision\":" + draft.revision() + "}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not update Main draft", exception);
+    }
+  }
+
+  @Override
+  public void discardDraft(UUID cardId, long expectedRevision, Instant discardedAt) {
+    Objects.requireNonNull(cardId, "cardId");
+    Objects.requireNonNull(discardedAt, "discardedAt");
+    try (PreparedStatement update =
+        connection.prepareStatement(
+            "UPDATE cards SET discarded_at=? WHERE id=? AND kind='MAIN' AND state='DRAFT' AND discarded_at IS NULL AND revision=?")) {
+      update.setString(1, discardedAt.toString());
+      update.setString(2, cardId.toString());
+      update.setLong(3, expectedRevision);
+      if (update.executeUpdate() != 1)
+        throw new PersistenceException("Draft changed, discarded, or does not exist");
+      events.append(
+          "DraftDiscarded", "MAIN_CARD", cardId, "{\"revision\":" + expectedRevision + "}");
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not discard Main draft", exception);
     }
   }
 
@@ -239,7 +259,10 @@ final class SqliteMainCardRepository implements MainCardRepository {
   private MainCard readCard(ResultSet row) throws SQLException {
     UUID id = UUID.fromString(row.getString("id"));
     Instant createdAt = Instant.parse(row.getString("created_at"));
-    CardState state = CardState.valueOf(row.getString("state"));
+    CardState state =
+        row.getString("discarded_at") == null
+            ? CardState.valueOf(row.getString("state"))
+            : CardState.DISCARDED;
     long revision = row.getLong("revision");
     String installedAtLiteral = row.getString("installed_at");
     Instant installedAt = installedAtLiteral == null ? null : Instant.parse(installedAtLiteral);

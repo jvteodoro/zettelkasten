@@ -36,7 +36,7 @@ When reading Main, N/P move to adjacent cards **without invoking a graph link tr
 +-------------------------- ZETTELKASTEN -------------------------+
 | [D] Desk   [M] Main   [I] Index   [B] Bib                      |
 +------------------------------ Desk -----------------------------+
-| Drafts: 3       [N] New    [Enter] Edit    [F] File            |
+| Drafts: 3       [N] New    [Enter] Edit    [F] File [X] Discard |
 | 1  Perception and conflict              unshelved              |
 | 2  Deutsch's cooperative competition    unshelved              |
 +-----------------------------------------------------------------+
@@ -54,6 +54,7 @@ When reading Main, N/P move to adjacent cards **without invoking a graph link tr
 - No search field appears; no link cursor navigation exists; no automatic suggestions appear.
 - Link can point to nonexistent card and still save. Draft stemlink remains pending until installation.
 - A duplicate/invalid address does not lose draft nor change current Main listing.
+- X on the selected saved Desk draft opens a separate confirmation; Y tombstones it, while N/Esc keeps it.
 - Index list ordering stays authored temporal order even when entered out-of-alphabet order.
 - Screens satisfy narrow (80×24) and wide (120×35) smoke test fixtures.
 

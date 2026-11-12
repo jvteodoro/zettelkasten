@@ -54,6 +54,34 @@ class MainCardServiceTest {
   }
 
   @Test
+  void discardingDraftTombstonesItAndWritesOneTransactionalEvent() {
+    var database = database("discard.db");
+    var service = service(database);
+    MainCard draft = service.createDraft(List.of(new TextRun(uuid(189), "retained content")));
+    service.discardDraft(draft.id(), draft.revision());
+    assertTrue(service.getDrafts().isEmpty());
+    MainCard restored =
+        database.unitOfWork().transact(tx -> tx.mainCards().findById(draft.id()).orElseThrow());
+    assertEquals(CardState.DISCARDED, restored.state());
+    assertEquals("retained content", restored.authoredBody().getFirst().literal());
+    assertThrows(IllegalStateException.class, restored::discard);
+    assertThrows(IllegalStateException.class, () -> restored.editDraft(0, List.of()));
+    long discardEvents =
+        database
+            .unitOfWork()
+            .transact(
+                tx ->
+                    tx.events().findAfter(0, 100).stream()
+                        .filter(
+                            event ->
+                                event.aggregateId().equals(draft.id())
+                                    && event.eventType().equals("DraftDiscarded"))
+                        .count());
+    assertEquals(1L, discardEvents);
+    assertThrows(RuntimeException.class, () -> service.discardDraft(draft.id(), draft.revision()));
+  }
+
+  @Test
   void manualInstallationKeepsIdentityAndReturnsIndependentPhysicalNeighbors() {
     var database = database("neighbors.db");
     var service = service(database);

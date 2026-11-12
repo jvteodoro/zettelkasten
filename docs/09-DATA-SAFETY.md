@@ -43,6 +43,7 @@ A forward-compat reader either preserves unknown future fields in a structured e
 - Journals and logs avoid raw card text/PII; analytics extracts are user-controlled local outputs.
 - Unlimited or deeply nested input must be bounded to protect terminal and importer memory use, without truncating canonical user data.
 - Normal UI cannot perform destructive maintenance; repair is explicit, validated, previewed, backed up and logged.
+- Confirmed Desk draft discard retains card content and identity in a tombstone; it never deletes authored rows.
 
 ## Operational drill
 
