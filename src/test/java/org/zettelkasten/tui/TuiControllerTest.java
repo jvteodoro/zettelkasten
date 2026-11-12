@@ -5,10 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.googlecode.lanterna.TerminalPosition;
+import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TerminalTextUtils;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 import com.googlecode.lanterna.screen.Screen;
+import com.googlecode.lanterna.screen.TerminalScreen;
+import com.googlecode.lanterna.terminal.virtual.DefaultVirtualTerminal;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.time.Clock;
@@ -108,6 +112,38 @@ class TuiControllerTest {
       assertFalse(
           wrapped.stream().flatMapToInt(String::codePoints).anyMatch(Character::isISOControl));
     }
+  }
+
+  @Test
+  void activeEditorPreservesUnicodeTextAndCursorAcrossTerminalResizes() throws Exception {
+    var controller = new TuiController(service(database()), sequence(650));
+    controller.handle(character('d'));
+    controller.handle(character('n'));
+    type(controller, "Antes 漢字 e\u0301");
+    var terminal = new DefaultVirtualTerminal(new TerminalSize(80, 24));
+    var screen = new TerminalScreen(terminal);
+    var renderer = new TerminalRenderer();
+
+    TerminalSession.run(
+        screen,
+        () -> {
+          renderer.render(screen, controller);
+          assertEquals(new TerminalSize(80, 24), screen.getTerminalSize());
+
+          terminal.setTerminalSize(new TerminalSize(120, 35));
+          renderer.render(screen, controller);
+          assertEquals(new TerminalSize(120, 35), screen.getTerminalSize());
+          type(controller, " depois");
+          renderer.render(screen, controller);
+          assertEditorTextAndCursor(controller, screen, "Antes 漢字 e\u0301 depois");
+
+          terminal.setTerminalSize(new TerminalSize(60, 20));
+          renderer.render(screen, controller);
+          assertEquals(new TerminalSize(60, 20), screen.getTerminalSize());
+          type(controller, " menor");
+          renderer.render(screen, controller);
+          assertEditorTextAndCursor(controller, screen, "Antes 漢字 e\u0301 depois menor");
+        });
   }
 
   @Test
@@ -353,6 +389,16 @@ class TuiControllerTest {
 
   private static void type(TuiController controller, String value) {
     value.chars().forEach(character -> controller.handle(character((char) character)));
+  }
+
+  private static void assertEditorTextAndCursor(
+      TuiController controller, Screen screen, String expectedText) {
+    assertEquals(expectedText, controller.editor().renderedText());
+    assertEquals(expectedText.length(), controller.editor().cursorUtf16Offset());
+    TerminalPosition cursor = screen.getCursorPosition();
+    assertTrue(
+        cursor.getColumn() >= 0 && cursor.getColumn() < screen.getTerminalSize().getColumns());
+    assertTrue(cursor.getRow() >= 0 && cursor.getRow() < screen.getTerminalSize().getRows());
   }
 
   private static void addIndexEntry(
