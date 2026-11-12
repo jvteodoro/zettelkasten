@@ -41,10 +41,26 @@ jobs:
           test "$(java -XshowSettings:properties -version 2>&1 | sed -n 's/^[[:space:]]*java.specification.version = //p' | head -n1)" = "25"
       - name: Maven verify
         run: mvn -B verify
-      - name: Packaged CLI smoke test
-        run: java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar --help
-      - name: Upload failing reports
-        if: failure()
+      - name: Packaged CLI offline archive smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive_dir=$(mktemp -d)
+          trap 'rm -rf "$archive_dir"' EXIT
+          app=target/zettelkasten-0.1.0-SNAPSHOT-all.jar
+          test -f "$app"
+          javap -verbose -classpath "$app" org.zettelkasten.cli.Main | grep -q 'major version: 69'
+          java -jar "$app" --help
+          java -jar "$app" --version
+          java -jar "$app" init --db "$archive_dir/source.db"
+          java -jar "$app" doctor --db "$archive_dir/source.db"
+          java -jar "$app" backup --db "$archive_dir/source.db" --out "$archive_dir/backup.db"
+          java -jar "$app" restore --from "$archive_dir/backup.db" --db "$archive_dir/restored.db"
+          java -jar "$app" export --db "$archive_dir/source.db" --out "$archive_dir/export"
+          java -jar "$app" import-archive --from "$archive_dir/export" --db "$archive_dir/imported.db"
+          java -jar "$app" doctor --db "$archive_dir/imported.db"
+      - name: Upload verification reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: surefire-failsafe-reports

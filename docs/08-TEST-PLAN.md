@@ -63,6 +63,8 @@ Adapt next-neighbor expectation to whichever addresses exist in fixture; do not 
 
 Assert `java -version` is 25 and the generated application runs on JDK 25. Use `maven.compiler.release=25` and fail builds on an older JDK; do not silently compile for Java 21. Keep Surefire/Failsafe/JaCoCo and any bytecode scanners compatible with Java 25.
 
+The process-driven acceptance suite launches separate JVMs against a temporary SQLite archive. It queues Lanterna keystrokes through the real terminal event loop at 80×24 to create a Unicode Maincard, retain a literal reference, reject a duplicate address, author an Index entry, import local BibTeX, and add a BibNote. A separate process halts after a committed write while a WAL is present; CLI backup/export/import then run before a reopened 120×35 session checks the recovered state. All data is fabricated and the test requires no network.
+
 ## CI gates
 
 GitHub Actions PR + push: build/test on Temurin JDK 25 Linux with Maven in batch mode; no network-dependent tests; unit+integration; Spotless/Checkstyle (after setup), OWASP dependency checks on scheduled release path, static docs/hook validation, packaged runnable artifact and smoke test. Full CI is source of truth. Local hooks are a faster subset.

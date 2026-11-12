@@ -41,7 +41,7 @@
     </dependency>
   </dependencies>
   <build>
-    <finalName>zettelkasten</finalName>
+    <finalName>zettelkasten-${project.version}</finalName>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId><artifactId>maven-enforcer-plugin</artifactId><version>${maven.enforcer.plugin.version}</version>

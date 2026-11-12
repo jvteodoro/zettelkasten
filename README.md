@@ -1,35 +1,34 @@
 # Zettelkasten — an analog-first, local-first terminal slip-box
 
-A Java terminal application that reproduces the *working constraints* of a physical Antinet Zettelkasten while preserving machine-readable structure for long-term archival and optional future analytics.
+A Java terminal application that preserves the working constraints of a physical Antinet Zettelkasten while keeping machine-readable structure available for archival and optional future analysis.
 
-**Status:** implementation in progress. The Java 25 Maven build, SQLite persistence layer, Desk/Main application services, and initial Lanterna shell/editor are in place; Index and Bibliography workflows and maintenance commands continue issue by issue. See [Implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md).
+The core workflows are implemented: Desk drafts, deliberate Maincard installation, manually authored Index cards, local BibTeX import and authored BibCards/notes, and offline archive maintenance. See the [implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md) for remaining work.
 
 ## Product boundaries
 
-- Three physically inspired boxes: **Main**, **Index**, and **Bibliography (Bib)**.
-- A **Desk** for unwritten/unfinished or unfiled maincards. A card may be composed without an address; an installed maincard must have an address.
-- User deliberately selects numeric-alpha addresses, writes internal references, files index entries, and discovers adjacent cards.
-- No full-text search, tags, backlinks, semantic recommendations, click-to-follow links, automatic address assignment, or link target autocomplete in the normal user interface.
-- Structured link spans and provenance are recorded internally for archival fidelity; no graph-analysis screen is exposed in the core product.
-- Java 25 LTS, Lanterna terminal UI, embedded SQLite file, imported BibTeX, future opt-in Zotero integration.
+- Three physically inspired boxes: **Main**, **Index**, and **Bibliography (Bib)**, with a Desk for drafts.
+- Drafts can be edited without an address. Installing a maincard assigns a unique address; installed content is not silently rewritten.
+- The user deliberately chooses addresses, writes references, files index entries, and discovers adjacent cards.
+- No full-text search, tags, backlinks, semantic recommendations, click-to-follow links, automatic address assignment, or link-target autocomplete in normal use.
+- Reference spans and provenance are stored for archival fidelity. Graph analysis is not exposed in ordinary use.
+- Data stays in a local SQLite archive. Core startup and CLI maintenance do not use the network.
 
-## Current command-line scaffold
+## Requirements
 
-The runnable jar supports `--help`, `--version`, and `open --db FILE`. `open` requires an existing archive and never creates a database. Use `D` for Desk, `M` for Main, `I` for Index, `B` for Bib, `?` for help, and `Q` to quit. Draft editor shortcuts are listed in [`keymap.txt`](src/main/resources/keymap.txt). `init` and maintenance commands are still planned.
+JDK 25 is required for build and runtime. Maven 3.9+ is available through the pinned Maven wrapper (`./mvnw`); its first use may download the Maven distribution. The application itself runs offline.
 
-## Planned first use (after implementation)
-
-The planned CLI is:
+## Run
 
 ~~~sh
-zettelkasten init --db ~/zettelkasten/slipbox.db
-zettelkasten open --db ~/zettelkasten/slipbox.db
-zettelkasten doctor --db ~/zettelkasten/slipbox.db
-zettelkasten backup --db ~/zettelkasten/slipbox.db --out ~/backups/slipbox-2026-11-11.db
-zettelkasten export --db ~/zettelkasten/slipbox.db --out ~/backups/slipbox-export/
+./mvnw -B verify
+java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar --help
+java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar init --db ~/zettelkasten/slipbox.db
+java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar open --db ~/zettelkasten/slipbox.db
 ~~~
 
-The eventual application accepts a separate storage path; the only required persistent application database is an embedded local SQLite file (SQLite may create transient WAL/SHM sidecars while open).
+The jar name includes the Maven project version. Use `--version` to inspect the application version. `open` requires an existing archive and does not create one. In the terminal, use `D` for Desk, `M` for Main, `I` for Index, `B` for Bib, `?` for help, and `Q` to quit. Draft editor shortcuts are listed in [`keymap.txt`](src/main/resources/keymap.txt).
+
+CLI maintenance commands are `doctor`, `backup`, `restore`, `export`, `import-archive`, and `migrate`; run `--help` for syntax. Restore and archive import write to a new destination. Migrations are explicit and create a safety backup before applying changes. SQLite can create temporary WAL/SHM sidecars while the archive is open.
 
 ## Documentation map
 
@@ -49,18 +48,12 @@ The eventual application accepts a separate storage path; the only required pers
 - [Architectural decisions](docs/adr/)
 - [Instructions for coding agents](AGENTS.md)
 
-## Source and interpretation
-
-Primary methodological reference: Scott P. Scheper, *Antinet Zettelkasten*, supplied as the project research source. Its method, not its copyrighted text/images, informs these requirements. Appendix C, pp. 583–587, describes constraints for a hypothetical digital Antinet. We separate **book-derived behavior** from **our engineering decisions** explicitly in the traceability document.
-
-This is an **intentional digital experiment**. We do **not** claim that keyboard typing is cognitively equivalent to handwriting.
+Primary methodological reference: Scott P. Scheper, *Antinet Zettelkasten*, supplied as the project research source. We distinguish book-derived behavior from engineering decisions in the traceability document. This is an intentional digital experiment; it does not claim keyboard typing is cognitively equivalent to handwriting.
 
 ## Development
 
-Install **JDK 25** (Java 21 is intentionally rejected) and Maven 3.9+. Then run:
-
 ~~~sh
-mvn -B verify
+./mvnw -B verify
 bash scripts/install-git-hooks.sh
 java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar --help
 ~~~
