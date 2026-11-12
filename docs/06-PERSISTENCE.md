@@ -21,6 +21,12 @@ namespace, descriptive source name, whole-file SHA-256, raw file content, per-en
 outcome, and domain event in the same transaction as any accepted source records.
 Rejected files keep their diagnostics but commit no new bibliographic sources.
 
+Opening an existing archive validates its current migration checksums and refuses
+an older schema without modifying it. `migrate --dry-run` reports the pending
+versions; `migrate --apply` first writes a verified sibling SQLite backup and
+then applies the numbered migrations transactionally. Initialization of a new
+archive applies the complete current migration sequence.
+
 ## Persistence contract
 
 Single embedded SQLite database (e.g. \`slipbox.db\`) is the **canonical store**. WAL may create transient \`-wal\` and \`-shm\` files; explain this to users. No application service or DB server. Support one writer application per file; second writer receives a clear lock error/read-only option. Use Xerial SQLite JDBC (pin version via Maven and verify compatible Java), Flyway community or hand-rolled numbered immutable migrations, never ORM auto-DDL. Implement reusable JDBC repositories with prepared statements.

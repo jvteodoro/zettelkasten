@@ -25,14 +25,16 @@ class MainTest {
   }
 
   @Test
-  void plannedCommandFailsHonestlyWithoutTouchingPaths() {
+  void initCreatesAnArchiveAndRefusesToOverwriteIt() {
     var out = new ByteArrayOutputStream();
     var err = new ByteArrayOutputStream();
+    var path = temp.resolve("initialized.db");
     assertEquals(
-        2,
-        Main.run(
-            new String[] {"init", "--db", "/tmp/should-not-exist.db"}, stream(out), stream(err)));
-    assertTrue(err.toString(StandardCharsets.UTF_8).contains("No files were opened or created"));
+        0, Main.run(new String[] {"init", "--db", path.toString()}, stream(out), stream(err)));
+    assertTrue(Files.isRegularFile(path));
+    assertEquals(
+        1, Main.run(new String[] {"init", "--db", path.toString()}, stream(out), stream(err)));
+    assertTrue(err.toString(StandardCharsets.UTF_8).contains("Refusing to overwrite"));
   }
 
   @Test
@@ -54,6 +56,53 @@ class MainTest {
             stream(new ByteArrayOutputStream()),
             stream(err)));
     assertTrue(Files.notExists(missing));
+  }
+
+  @Test
+  void maintenanceCommandsBackupRestoreAndMoveThroughPortableJsonl() {
+    Path database = temp.resolve("operations.db");
+    Path backup = temp.resolve("operations-backup.db");
+    Path restored = temp.resolve("operations-restored.db");
+    Path exported = temp.resolve("portable");
+    Path imported = temp.resolve("portable-import.db");
+    var out = new ByteArrayOutputStream();
+    var err = new ByteArrayOutputStream();
+
+    assertEquals(
+        0, Main.run(new String[] {"init", "--db", database.toString()}, stream(out), stream(err)));
+    assertEquals(
+        0,
+        Main.run(new String[] {"doctor", "--db", database.toString()}, stream(out), stream(err)));
+    assertEquals(
+        0,
+        Main.run(
+            new String[] {"backup", "--db", database.toString(), "--out", backup.toString()},
+            stream(out),
+            stream(err)));
+    assertEquals(
+        0,
+        Main.run(
+            new String[] {"restore", "--from", backup.toString(), "--db", restored.toString()},
+            stream(out),
+            stream(err)));
+    assertEquals(
+        0,
+        Main.run(
+            new String[] {"export", "--db", database.toString(), "--out", exported.toString()},
+            stream(out),
+            stream(err)));
+    assertEquals(
+        0,
+        Main.run(
+            new String[] {
+              "import-archive", "--from", exported.toString(), "--db", imported.toString()
+            },
+            stream(out),
+            stream(err)));
+    assertTrue(Files.isRegularFile(restored));
+    assertTrue(Files.isRegularFile(imported));
+    assertTrue(Files.isRegularFile(exported.resolve("manifest.json")));
+    assertEquals(0, err.size());
   }
 
   private static PrintStream stream(ByteArrayOutputStream output) {

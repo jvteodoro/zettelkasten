@@ -72,7 +72,7 @@ public final class SqliteDatabase {
     }
   }
 
-  /** Open an existing regular archive and apply only pending versioned migrations. */
+  /** Open an existing archive only when its migration history matches this application. */
   public static SqliteDatabase open(Path requestedPath) {
     return open(requestedPath, Clock.systemUTC(), UUID::randomUUID);
   }
@@ -86,18 +86,45 @@ public final class SqliteDatabase {
       throw new PersistenceException(
           "Archive does not exist as a regular non-symbolic-link file: " + path);
     }
-    try (Connection connection = connect(path)) {
-      connection.setAutoCommit(false);
-      new MigrationRunner().migrate(connection);
-      connection.commit();
+    try (Connection connection = DriverManagerConnections.open(path)) {
+      new MigrationRunner().requireCurrent(connection);
       return new SqliteDatabase(path, clock, eventIds);
     } catch (SQLException exception) {
-      throw new PersistenceException("Could not open SQLite archive", exception);
+      throw new PersistenceException(
+          "Could not open SQLite archive: " + exception.getMessage(), exception);
+    }
+  }
+
+  /** Applies pending migrations explicitly; callers must make a verified backup first. */
+  public static int migrate(Path requestedPath) {
+    Path path = normalize(requestedPath);
+    if (Files.isSymbolicLink(path) || !Files.isRegularFile(path))
+      throw new PersistenceException(
+          "Archive does not exist as a regular non-symbolic-link file: " + path);
+    try (Connection connection = DriverManagerConnections.open(path)) {
+      connection.setAutoCommit(false);
+      int version = new MigrationRunner().migrate(connection);
+      connection.commit();
+      return version;
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not migrate SQLite archive", exception);
     }
   }
 
   public Path path() {
     return path;
+  }
+
+  static int schemaVersionWithoutMigrating(Path requestedPath) {
+    Path path = normalize(requestedPath);
+    if (Files.isSymbolicLink(path) || !Files.isRegularFile(path))
+      throw new PersistenceException(
+          "Archive does not exist as a regular non-symbolic-link file: " + path);
+    try (Connection connection = DriverManagerConnections.open(path)) {
+      return new MigrationRunner().currentVersion(connection);
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not read archive schema version", exception);
+    }
   }
 
   public SqliteUnitOfWork unitOfWork() {

@@ -64,6 +64,18 @@ Analytics export in versioned JSONL plus manifest. Entity records and edge recor
 
 Define \`manifest.json\`: format name, formatVersion, appVersion, schemaVersion, exportUtc, item/event counts, per-file SHA-256, address scheme registry, source database identifier, optional privacy notice. Files: \`cards.jsonl\`, \`runs.jsonl\`, \`placements.jsonl\`, \`references.jsonl\`, \`index.jsonl\`, \`bibliography.jsonl\`, \`events.jsonl\`. UTF-8 LF, deterministic row ordering, stable canonical JSON key order, explicit nulls, strict escape rules. No invented or synthesized links on import. Keep all unknown-version fields in a round-trip preservation bucket or reject with explicit error before mutation.
 
+The first portable archive implementation uses \`format=zettelkasten-jsonl\`,
+\`formatVersion=1\`, and the current SQLite schema version. The manifest names each
+data file with its exact row count and SHA-256. The files are UTF-8 JSON Lines;
+each row contains a canonical table name and the complete stored row, with
+explicit nulls and SQL integer values retained as JSON integers. The files group
+cards/runs, placements, references, Index data, bibliography/import data, and
+events. Migration bookkeeping is represented by the schema version rather than
+exported as user data. Rows and columns follow SQLite primary-key and table
+column order. The reader rejects unknown manifest keys, unknown tables/columns,
+unsupported format or schema versions, malformed UTF-8, and checksum/count
+mismatches before it creates a destination database.
+
 ## Analytics use cases (future, NOT in TUI)
 
 - Directed in-degree/out-degree by time, isolated cards, connected components, path lengths.

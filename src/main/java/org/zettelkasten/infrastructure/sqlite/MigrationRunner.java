@@ -15,6 +15,7 @@ import java.util.List;
 
 /** Applies immutable, ordered SQL migrations and refuses changed or future schemas. */
 final class MigrationRunner {
+  static final int CURRENT_VERSION = 3;
   private static final List<Migration> MIGRATIONS =
       List.of(
           new Migration(1, "canonical SQLite schema", "/db/migration/V001__canonical_sqlite.sql"),
@@ -59,6 +60,20 @@ final class MigrationRunner {
     return currentVersion;
   }
 
+  void requireCurrent(Connection connection) throws SQLException {
+    int current = currentVersion(connection);
+    int known = MIGRATIONS.getLast().version();
+    if (current != known) {
+      throw new SQLException(
+          current < known
+              ? "Archive schema version "
+                  + current
+                  + " requires explicit migration; run migrate --dry-run then migrate --apply"
+              : "Database schema version " + current + " is newer than this application");
+    }
+    verifyAppliedChecksums(connection, current);
+  }
+
   int currentVersion(Connection connection) throws SQLException {
     if (!tableExists(connection, "schema_migrations")) return 0;
     try (Statement statement = connection.createStatement();
@@ -66,6 +81,16 @@ final class MigrationRunner {
             statement.executeQuery("SELECT COALESCE(MAX(version), 0) FROM schema_migrations")) {
       return result.next() ? result.getInt(1) : 0;
     }
+  }
+
+  List<String> pendingDescriptions(int currentVersion) {
+    if (currentVersion > MIGRATIONS.getLast().version())
+      throw new IllegalArgumentException(
+          "Database schema version " + currentVersion + " is newer than this application");
+    return MIGRATIONS.stream()
+        .filter(migration -> migration.version() > currentVersion)
+        .map(Migration::description)
+        .toList();
   }
 
   private void verifyAppliedChecksums(Connection connection, int version) throws SQLException {

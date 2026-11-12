@@ -615,7 +615,7 @@ class SqlitePersistenceTest {
   }
 
   @Test
-  void openingAnOlderFixtureAppliesTheNextMigrationWithoutOverwritingIt() throws Exception {
+  void olderFixtureRequiresExplicitBackedUpMigrationAndRetainsExistingData() throws Exception {
     Path path = temp.resolve("v0-fixture.db");
     try (var connection = DriverManager.getConnection("jdbc:sqlite:" + path);
         Statement statement = connection.createStatement()) {
@@ -629,6 +629,11 @@ class SqlitePersistenceTest {
       }
       statement.execute("PRAGMA user_version = 0");
     }
+    assertThrows(PersistenceException.class, () -> SqliteDatabase.open(path));
+    assertEquals(3, ArchiveOperations.pendingMigrations(path).size());
+    var safetyCopy = ArchiveOperations.backupBeforeMigration(path, temp.resolve("v0-safety.db"));
+    assertTrue(Files.isRegularFile(safetyCopy));
+    assertEquals(3, SqliteDatabase.migrate(path));
     var migrated = SqliteDatabase.open(path);
     assertEquals(3, migrated.schemaVersion());
     boolean noDrafts = migrated.unitOfWork().transact(tx -> tx.mainCards().findDrafts().isEmpty());

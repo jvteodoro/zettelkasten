@@ -18,7 +18,16 @@ zettelkasten migrate --db FILE --dry-run
 zettelkasten migrate --db FILE --apply
 ~~~
 
-Restore refuses a nonempty destination unless explicitly confirmed with an additional manual backup; dry-run shows expected migrations and potential risks. Use SQLite online backup or VACUUM INTO and fsync/atomic file handling where possible; check integrity_check, foreign_key_check, event sequence integrity and manifest checksums on new file before replacing any existing target.
+These operations are implemented by the CLI. `backup` uses SQLite `VACUUM INTO`
+and verifies integrity and foreign keys before moving a new output into place;
+`restore` creates a consistent SQLite snapshot at a new destination. Both refuse
+existing outputs. `export` writes the versioned JSONL archive; `import-archive`
+validates the full manifest, checksums, UTF-8, row counts, schema, and columns
+before creating a destination, and imports only to a new database. The imported
+store is checked for integrity and foreign keys before success. `doctor` reports
+integrity, FK, schema, and event-order checks. `migrate --dry-run` reads the
+schema version without migrating; `migrate --apply` writes a sibling
+`.pre-migration-vN.db` safety backup before applying pending migrations.
 
 ## Canonical portable archive
 
