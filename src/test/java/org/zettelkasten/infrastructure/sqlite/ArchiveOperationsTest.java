@@ -44,7 +44,9 @@ class ArchiveOperationsTest {
         service.createDraft(List.of(new TextRun(uuid(200), "Überprüfung — 漢字"), link, external));
     service.installMainCard(draft.id(), draft.revision(), "3118/2a");
     service.appendAnnotation(draft.id(), List.of(new TextRun(uuid(203), "An appended note.")));
-    service.createDraft(List.of(new TextRun(uuid(204), "A separate working draft.")));
+    var discardedDraft =
+        service.createDraft(List.of(new TextRun(uuid(204), "A retained tombstone.")));
+    service.discardDraft(discardedDraft.id(), discardedDraft.revision());
     var sourceRecord =
         new BibliographicSource(
             uuid(210),
@@ -193,6 +195,12 @@ class ArchiveOperationsTest {
             .getMainByExactAddress("3118/2a")
             .orElseThrow();
     assertEquals("Überprüfung — 漢字", importedCard.authoredBody().getFirst().literal());
+    var importedTombstone =
+        imported
+            .unitOfWork()
+            .transact(tx -> tx.mainCards().findById(discardedDraft.id()).orElseThrow());
+    assertEquals(org.zettelkasten.domain.CardState.DISCARDED, importedTombstone.state());
+    assertEquals("A retained tombstone.", importedTombstone.authoredBody().getFirst().literal());
     assertTrue(
         imported.unitOfWork().transact(tx -> tx.indexCards().findListCards('A').size()) == 1);
     assertTrue(

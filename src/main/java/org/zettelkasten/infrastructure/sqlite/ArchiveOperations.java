@@ -548,6 +548,7 @@ public final class ArchiveOperations {
       for (String table : INSERT_ORDER) {
         insertTableRows(connection, allRows, table, ignored -> true);
       }
+      restoreDiscardTombstones(connection, allRows);
       try (Statement statement = connection.createStatement()) {
         statement.execute(
             """
@@ -594,10 +595,26 @@ public final class ArchiveOperations {
           if ("installed_at".equals(columns.get(i))
               || "installed_body_revision".equals(columns.get(i))) value = null;
         }
+        if (row.table().equals("cards") && "discarded_at".equals(columns.get(i))) value = null;
         if (value == null) insert.setObject(i + 1, null);
         else insert.setObject(i + 1, value);
       }
       insert.executeUpdate();
+    }
+  }
+
+  private static void restoreDiscardTombstones(Connection connection, List<Row> rows)
+      throws SQLException {
+    try (PreparedStatement update =
+        connection.prepareStatement(
+            "UPDATE cards SET discarded_at=? WHERE id=? AND kind='MAIN' AND discarded_at IS NULL")) {
+      for (Row row : rows) {
+        if (!row.table().equals("cards") || row.values().get("discarded_at") == null) continue;
+        update.setObject(1, row.values().get("discarded_at"));
+        update.setObject(2, row.values().get("id"));
+        if (update.executeUpdate() != 1)
+          throw new SQLException("Could not restore draft tombstone");
+      }
     }
   }
 
