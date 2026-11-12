@@ -57,6 +57,7 @@ jobs:
           java -jar "$app" backup --db "$archive_dir/source.db" --out "$archive_dir/backup.db"
           java -jar "$app" restore --from "$archive_dir/backup.db" --db "$archive_dir/restored.db"
           java -jar "$app" export --db "$archive_dir/source.db" --out "$archive_dir/export"
+          java -jar "$app" graph-export --db "$archive_dir/source.db" --out "$archive_dir/graph"
           java -jar "$app" import-archive --from "$archive_dir/export" --db "$archive_dir/imported.db"
           java -jar "$app" doctor --db "$archive_dir/imported.db"
       - name: Upload verification reports

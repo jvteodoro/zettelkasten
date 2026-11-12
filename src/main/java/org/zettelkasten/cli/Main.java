@@ -10,6 +10,7 @@ import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 import org.zettelkasten.infrastructure.bibtex.JBibTeXFileParser;
 import org.zettelkasten.infrastructure.sqlite.ArchiveOperations;
+import org.zettelkasten.infrastructure.sqlite.GraphProjectionExporter;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
 import org.zettelkasten.tui.TuiApplication;
 
@@ -19,7 +20,15 @@ import org.zettelkasten.tui.TuiApplication;
 public final class Main {
   private static final String VERSION = "0.1.0-SNAPSHOT";
   private static final String[] COMMANDS = {
-    "init", "open", "doctor", "backup", "restore", "export", "import-archive", "migrate"
+    "init",
+    "open",
+    "doctor",
+    "backup",
+    "restore",
+    "export",
+    "import-archive",
+    "migrate",
+    "graph-export"
   };
 
   private Main() {}
@@ -83,6 +92,12 @@ public final class Main {
           Path db = option(args, "--db");
           Path output = option(args, "--out");
           out.println(new ArchiveOperations(SqliteDatabase.open(db)).export(output));
+          yield 0;
+        }
+        case "graph-export" -> {
+          Path db = option(args, "--db");
+          Path output = option(args, "--out");
+          out.println(new GraphProjectionExporter(SqliteDatabase.open(db)).export(output));
           yield 0;
         }
         case "import-archive" -> {
@@ -185,6 +200,8 @@ public final class Main {
     out.println("  backup     Create a consistent SQLite backup: backup --db FILE --out BACKUP.db");
     out.println("  restore    Restore to a new file: restore --from BACKUP.db --db NEWFILE");
     out.println("  export     Export a portable archive: export --db FILE --out DIRECTORY");
+    out.println(
+        "  graph-export  Export an offline graph projection: graph-export --db FILE --out DIRECTORY");
     out.println(
         "  import-archive  Import to a new file: import-archive --from DIRECTORY --db NEWFILE");
     out.println("  migrate    Review/apply schema changes: migrate --db FILE --dry-run|--apply");

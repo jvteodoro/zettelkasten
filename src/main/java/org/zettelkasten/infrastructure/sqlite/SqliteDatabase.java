@@ -151,6 +151,14 @@ public final class SqliteDatabase {
     return connect(path);
   }
 
+  Connection newReadOnlyConnection() throws SQLException {
+    SQLiteConfig config = new SQLiteConfig();
+    config.enforceForeignKeys(true);
+    config.setBusyTimeout(BUSY_TIMEOUT_MILLIS);
+    config.setReadOnly(true);
+    return config.createConnection("jdbc:sqlite:" + path);
+  }
+
   private static Connection connect(Path path) throws SQLException {
     SQLiteConfig config = new SQLiteConfig();
     config.enforceForeignKeys(true);

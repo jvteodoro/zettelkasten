@@ -64,6 +64,7 @@ class MainTest {
     Path backup = temp.resolve("operations-backup.db");
     Path restored = temp.resolve("operations-restored.db");
     Path exported = temp.resolve("portable");
+    Path graph = temp.resolve("graph-projection");
     Path imported = temp.resolve("portable-import.db");
     var out = new ByteArrayOutputStream();
     var err = new ByteArrayOutputStream();
@@ -94,6 +95,12 @@ class MainTest {
     assertEquals(
         0,
         Main.run(
+            new String[] {"graph-export", "--db", database.toString(), "--out", graph.toString()},
+            stream(out),
+            stream(err)));
+    assertEquals(
+        0,
+        Main.run(
             new String[] {
               "import-archive", "--from", exported.toString(), "--db", imported.toString()
             },
@@ -102,6 +109,8 @@ class MainTest {
     assertTrue(Files.isRegularFile(restored));
     assertTrue(Files.isRegularFile(imported));
     assertTrue(Files.isRegularFile(exported.resolve("manifest.json")));
+    assertTrue(Files.isRegularFile(graph.resolve("manifest.json")));
+    assertTrue(Files.isRegularFile(graph.resolve("graph.jsonl")));
     assertEquals(0, err.size());
   }
 

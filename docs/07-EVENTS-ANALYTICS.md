@@ -76,6 +76,19 @@ column order. The reader rejects unknown manifest keys, unknown tables/columns,
 unsupported format or schema versions, malformed UTF-8, and checksum/count
 mismatches before it creates a destination database.
 
+The optional graph projection is a separate, read-only CLI output using
+\`graph-export --db FILE --out DIRECTORY\`. Its manifest declares
+\`format=zettelkasten-graph-jsonl\`, format version, schema version, node/edge/event
+counts and the SHA-256 of \`graph.jsonl\`. Namespaced UUIDs retain reversible IDs;
+each authored reference occurrence remains its own directed edge, including
+unresolved target literals and source run IDs. Manual Index pointers retain their
+entry identity, authored text, literal, resolution and timestamp; dedicated-keyterm
+promotions retain their source/promoted entry IDs. Bibliographic associations,
+BibNote nodes and complete event envelopes are explicit records.
+Filing-neighbor snapshots use \`FILED_ADJACENT_TO\` and \`derived=true\` and remain
+distinct from authored semantic edges. Graph exports are disposable extracts,
+not writable stores or migration inputs. See [ADR 0008](adr/0008-offline-graph-projection.md).
+
 ## Analytics use cases (future, NOT in TUI)
 
 - Directed in-degree/out-degree by time, isolated cards, connected components, path lengths.
