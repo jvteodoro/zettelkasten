@@ -103,7 +103,23 @@ public final class ProcessTuiHarness {
         || indexService.getEntries(indexService.getListCards('A').getFirst().id()).size() != 1
         || !exRefRetained
         || !duplicateAddressStayedDraft) {
-      throw new AssertionError("Process-driven TUI workflow did not preserve the expected records");
+      throw new AssertionError(
+          "Process-driven TUI workflow did not preserve expected records: installed="
+              + installed.size()
+              + ", sources="
+              + sources.size()
+              + ", notes="
+              + notes.size()
+              + ", indexLists="
+              + indexService.getListCards('A').size()
+              + ", indexEntries="
+              + (indexService.getListCards('A').isEmpty()
+                  ? 0
+                  : indexService.getEntries(indexService.getListCards('A').getFirst().id()).size())
+              + ", exRefRetained="
+              + exRefRetained
+              + ", duplicateStayedDraft="
+              + duplicateAddressStayedDraft);
     }
     System.out.printf("TUI_WORKFLOW_OK terminal=%dx%d%n", columns, rows);
   }
@@ -137,10 +153,8 @@ public final class ProcessTuiHarness {
     keys.add(character('j'));
     keys.add(character('l'));
     keys.add(character('a'));
-    keys.add(character('+'));
     addCharacters(keys, "1");
     keys.add(key(KeyType.Enter));
-    keys.add(character('a'));
     addCharacters(keys, "Überprüfung");
     keys.add(key(KeyType.Enter));
     keys.add(character('m'));

@@ -15,7 +15,7 @@ Java 25 + Lanterna (ncurses-like terminal implementation, not JNA curses). Suppo
 
 ## Global navigation
 
-At home, use J/K to select Desk, Main, Index, or Bib; L or Enter opens the selected box. H returns to a parent screen where applicable; ? opens help and Q quits with the unsaved draft prompt. The editor starts in INSERT mode. Esc switches to NORMAL mode, where H/J/K/L move the cursor and Vim-style commands work; I returns to INSERT mode. In NORMAL mode use R/T/E for literal reference prompts, :w to save, :q to exit, and :wq to save and exit. Unsaved changes require an explicit choice. Printable characters, including h/j/k/l, remain authored input in INSERT mode and literal prompts. The editor uses no Ctrl-key commands. Ctrl+C is handled safely and is not treated as data deletion. The context-specific bindings and help are documented together and covered by key binding tests.
+At home, use J/K to select Desk, Main, Index, or Bib; L or Enter opens the selected box. On Main, H/K move to the previous physical card and J moves to the next; B or Esc returns to Home. Other screens use H to return to a parent where applicable; B returns directly to Home, except on a BibCard where B shows its back. ? opens help and Q quits with the unsaved draft prompt. The editor starts in INSERT mode. Esc switches to NORMAL mode, where H/J/K/L move the cursor and Vim-style commands work; I returns to INSERT mode. In NORMAL mode use R/T/E for literal reference prompts, :w to save, :q to exit, and :wq to save and exit. Unsaved changes require an explicit choice. Printable characters, including h/j/k/l, remain authored input in INSERT mode and literal prompts. The editor uses no Ctrl-key commands. Ctrl+C is handled safely and is not treated as data deletion. The context-specific bindings and help are documented together and covered by key binding tests.
 
 When reading Main, J/K move to adjacent cards **without invoking a graph link traversal**. G prompts for an exact address and positions the Main drawer at that location (manual addressing is allowed). No typeahead or auto-complete. When user reads a link, it is ordinary printed text (or subtle pen-color equivalent), never a click target. An address in Index is a written pointer; user manually opens Main and types it.
 
@@ -43,7 +43,9 @@ When reading Main, J/K move to adjacent cards **without invoking a graph link tr
 | EDITOR [no address]                                             |
 | Perceptions of incompatible objectives may...                  |
 | See: 4214/2e/3a/1                                               |
-| INSERT: type freely   Esc NORMAL                              |
+|                                                                 |
+| INSERT: type freely   Esc NORMAL                                |
+|                                                                 |
 +-----------------------------------------------------------------+
 ~~~
 
@@ -75,7 +77,9 @@ and never truncates. R/T/E in NORMAL mode open literal prompts; lower-case `l` r
 
 The Index screen moves across A–Z dividers with H/L, selects overflow list cards
 and authored entries with J/K, opens explicitly numbered list cards in order,
-and browses dedicated keyterm cards alphabetically.
+and browses dedicated keyterm cards alphabetically. From a divider, `A` starts
+a guided flow to create a list card and its first authored entry; `+` creates an
+empty list card. On an open list or keyterm card, `A` appends another entry.
 On a card, `A` starts a form for authored entry text, target kind (`M`, `K`, or
 `S`), and literal target. `P` promotes the selected list entry while retaining
 the original. Entries and targets are printed text; Enter reports the literal
@@ -91,3 +95,8 @@ text, and authored observation. Import preview classifies every record before
 apply; rejected files commit no new sources. E in the Main editor's NORMAL mode
 accepts a literal such as `b.paperkey, p. 27` and renders that same text. It
 does not suggest source keys or navigate to a source.
+
+The renderer reserves a fixed footer for mode help, command/literal input, and
+status so those controls do not move with card length. Interface text uses color
+to distinguish it from card content. Main addresses are highlighted in bold
+yellow; terminal emulators control actual font sizing.

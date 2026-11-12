@@ -3,10 +3,11 @@
 
 Global:
 J/K    Move selection down/up; on Main move next/previous by filing order
-H      Return to the parent screen (Index divider and BibCard use H contextually)
+H      Return to parent where applicable; on Main move to previous card and on Index change divider
 L      Open the selected item; on Index move to the next divider
 Enter  Open selected item or confirm the current form
 Esc    Return or cancel the current modal prompt
+B      Return directly to Home; on a BibCard, show its back
 Q      Quit
 ?      Help (Home)
 
@@ -29,7 +30,7 @@ Index divider:
 H/L    Previous/next A–Z divider
 J/K    Select an overflow ListIndexCard
 Enter  Open the selected list card
-+      Create a ListIndexCard after explicitly entering its overflow number
+A      Create a list card and its first entry (enter overflow, text, kind, literal)
 *      Browse dedicated keyterm cards
 
 Index cards:
@@ -74,3 +75,5 @@ Enter   Confirm the literal
 Esc     Cancel the prompt and return to the prior editor mode
 
 In INSERT mode and text-entry prompts, h/j/k/l are ordinary authored text.
+Editor mode hints and command prompt are fixed in the footer. Main addresses are
+highlighted in bold yellow; terminal font size is controlled by the terminal.

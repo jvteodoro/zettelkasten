@@ -1,8 +1,10 @@
 package org.zettelkasten.tui;
 
+import com.googlecode.lanterna.SGR;
 import com.googlecode.lanterna.TerminalPosition;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TerminalTextUtils;
+import com.googlecode.lanterna.TextColor;
 import com.googlecode.lanterna.graphics.TextGraphics;
 import com.googlecode.lanterna.screen.Screen;
 import java.io.IOException;
@@ -25,11 +27,24 @@ public final class TerminalRenderer {
       return;
     }
     int width = size.getColumns() - 2;
-    graphics.putString(1, 0, "ZETTELKASTEN — analog-first local slip-box");
-    graphics.putString(1, 1, navigationHint(controller));
+    graphics.setForegroundColor(TextColor.ANSI.CYAN);
+    graphics.putString(1, 0, "ZETTELKASTEN — analog-first local slip-box", SGR.BOLD);
+    graphics.setForegroundColor(TextColor.ANSI.DEFAULT);
+    graphics.putString(1, 1, screenTitle(controller));
     graphics.drawLine(0, 2, size.getColumns() - 1, 2, '─');
-    List<String> body = wrap(controller.viewLines(), width, size.getRows() - 6);
-    for (int row = 0; row < body.size(); row++) graphics.putString(1, row + 3, body.get(row));
+    int footer = footerPosition(size);
+    List<String> body = wrap(controller.viewLines(), width, footer - 3);
+    for (int row = 0; row < body.size(); row++) {
+      String line = body.get(row);
+      int y = row + 3;
+      if (controller.screen() == TuiController.Screen.MAIN && line.startsWith("Address ")) {
+        graphics.setForegroundColor(TextColor.ANSI.YELLOW);
+        graphics.putString(1, y, fit(sanitize(line), width), SGR.BOLD, SGR.UNDERLINE);
+        graphics.setForegroundColor(TextColor.ANSI.DEFAULT);
+      } else {
+        graphics.putString(1, y, fit(sanitize(line), width));
+      }
+    }
     if (controller.screen() == TuiController.Screen.EDITOR
         && controller.editor() != null
         && (controller.editor().mode() == EditorBuffer.Mode.TEXT
@@ -40,26 +55,65 @@ public final class TerminalRenderer {
           cursorLocation(
               controller.editor().renderedText(), controller.editor().cursorUtf16Offset(), width);
       int cursorX = Math.min(size.getColumns() - 1, 1 + cursor[1]);
-      int cursorY = Math.min(footerPosition(size) - 1, 3 + headerRows + cursor[0]);
+      int cursorY = Math.min(footer - 1, 3 + headerRows + cursor[0]);
       screen.setCursorPosition(new TerminalPosition(cursorX, cursorY));
     }
-    int footer = footerPosition(size);
     graphics.drawLine(0, footer, size.getColumns() - 1, footer, '─');
-    graphics.putString(1, footer + 1, fit(sanitize(controller.status()), width));
+    graphics.setForegroundColor(TextColor.ANSI.CYAN);
+    graphics.putString(1, footer + 1, fit(sanitize(navigationHint(controller)), width), SGR.BOLD);
+    graphics.setForegroundColor(TextColor.ANSI.YELLOW);
+    String prompt = footerPrompt(controller);
+    graphics.putString(1, footer + 2, fit(sanitize(prompt), width));
+    graphics.setForegroundColor(TextColor.ANSI.GREEN);
+    String footerStatus = controller.status();
+    if (controller.screen() == TuiController.Screen.EDITOR
+        && controller.editor() != null
+        && !controller.editor().validationMessage().isEmpty()) {
+      footerStatus = controller.editor().validationMessage();
+    }
+    graphics.putString(1, footer + 3, fit(sanitize(footerStatus), width));
+    graphics.setForegroundColor(TextColor.ANSI.DEFAULT);
     screen.refresh();
+  }
+
+  private static String screenTitle(TuiController controller) {
+    if (controller.screen() == TuiController.Screen.EDITOR) return "Card editor";
+    return switch (controller.screen()) {
+      case HOME -> "Home";
+      case DESK -> "Desk";
+      case MAIN -> "Main";
+      case INDEX, INDEX_LIST_CARD, KEYTERM_CARDS, KEYTERM_CARD, INDEX_INPUT -> "Index";
+      case BIB, BIB_SOURCE, BIB_CARD, BIB_INPUT, BIB_IMPORT_PREVIEW -> "Bibliography";
+      case HELP -> "Keyboard help";
+      default -> "Input";
+    };
   }
 
   private static String navigationHint(TuiController controller) {
     if (controller.screen() == TuiController.Screen.EDITOR && controller.editor() != null) {
       return switch (controller.editor().mode()) {
         case TEXT -> "INSERT — type freely   Esc NORMAL";
-        case NORMAL -> "NORMAL — H/J/K/L Move   I Insert   :w Save   :q Exit";
-        case COMMAND -> "COMMAND — Enter Run   Esc Cancel";
+        case NORMAL ->
+            "NORMAL — H/J/K/L Move   I Insert   :w Save   :q Exit   :wq Save+Exit   Esc/B Home";
+        case COMMAND -> "COMMAND — type w, q, or wq   Enter Run   Esc Cancel";
         case CARD_REFERENCE, INDEX_LITERAL, EXTERNAL_REFERENCE ->
             "LITERAL PROMPT — Enter confirm   Esc cancel";
       };
     }
-    return "J/K Select   H/L Move or back   L/Enter Open   ? Help   Q Quit";
+    return "J/K Select   H/L Navigate or back   L/Enter Open   B Home   ? Help   Q Quit";
+  }
+
+  private static String footerPrompt(TuiController controller) {
+    if (controller.screen() == TuiController.Screen.EDITOR && controller.editor() != null) {
+      EditorBuffer editor = controller.editor();
+      if (editor.mode() == EditorBuffer.Mode.COMMAND
+          || editor.mode() == EditorBuffer.Mode.CARD_REFERENCE
+          || editor.mode() == EditorBuffer.Mode.INDEX_LITERAL
+          || editor.mode() == EditorBuffer.Mode.EXTERNAL_REFERENCE) {
+        return editor.promptLabel() + editor.promptText() + "    Enter confirm   Esc cancel";
+      }
+    }
+    return "";
   }
 
   public static List<String> wrap(List<String> lines, int width, int maxRows) {
@@ -137,7 +191,7 @@ public final class TerminalRenderer {
   }
 
   private static int footerPosition(TerminalSize size) {
-    return size.getRows() - 2;
+    return size.getRows() - 4;
   }
 
   private static String fit(String value, int width) {

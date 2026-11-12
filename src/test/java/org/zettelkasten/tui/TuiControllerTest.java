@@ -111,7 +111,10 @@ class TuiControllerTest {
     assertTrue(controller.viewLines().contains("Address 3118/2"));
     controller.handle(character('k'));
     assertTrue(controller.viewLines().contains("Address 3118/1"));
+    controller.handle(character('j'));
     controller.handle(character('h'));
+    assertTrue(controller.viewLines().contains("Address 3118/1"));
+    controller.handle(character('b'));
     assertEquals(TuiController.Screen.HOME, controller.screen());
 
     controller.handle(character('k'));
@@ -288,12 +291,16 @@ class TuiControllerTest {
     controller.handle(character('j'));
     controller.handle(character('l'));
     controller.handle(character('a'));
-    controller.handle(character('+'));
     type(controller, "1");
+    controller.handle(key(KeyType.Enter));
+    assertEquals(TuiController.Screen.INDEX_INPUT, controller.screen());
+    type(controller, "Argument");
+    controller.handle(key(KeyType.Enter));
+    controller.handle(character('m'));
+    type(controller, "3118/99");
     controller.handle(key(KeyType.Enter));
     assertEquals(TuiController.Screen.INDEX_LIST_CARD, controller.screen());
 
-    addIndexEntry(controller, "Argument", 'M', "3118/99");
     addIndexEntry(controller, "Aggressivität", 'K', "Argument");
     assertEquals(
         List.of("Argument", "Aggressivität"),

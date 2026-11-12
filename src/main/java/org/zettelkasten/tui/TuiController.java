@@ -99,6 +99,7 @@ public final class TuiController {
   private Screen indexInputReturnScreen;
   private String indexAuthoredText;
   private char indexTargetKind;
+  private boolean addEntryAfterListCreation;
   private List<BibliographicSource> sources = List.of();
   private int selectedSource;
   private BibliographicSource currentSource;
@@ -177,12 +178,25 @@ public final class TuiController {
     }
     if (key.getKeyType() == KeyType.Character && !key.isCtrlDown()) {
       char value = Character.toLowerCase(key.getCharacter());
+      if (value == 'b' && screen == Screen.BIB_CARD) {
+        showingBibBack = true;
+        return;
+      }
+      if (value == 'b') {
+        screen = Screen.HOME;
+        status = "";
+        return;
+      }
       if (value == 'q') {
         quitRequested = true;
         return;
       }
       if (value == 'j' || value == 'k') {
         moveSelection(value == 'j' ? 1 : -1);
+        return;
+      }
+      if (value == 'h' && screen == Screen.MAIN) {
+        moveMain(-1);
         return;
       }
       if (value == 'h' && screen != Screen.INDEX && screen != Screen.BIB_CARD) {
@@ -207,7 +221,10 @@ public final class TuiController {
           if (value == 'h') selectDivider((char) Math.max('A', selectedDivider - 1));
           else if (value == 'l') selectDivider((char) Math.min('Z', selectedDivider + 1));
           else if (value == '+') beginIndexInput(IndexInputStage.OVERFLOW);
-          else if (value == '*') openKeytermCards();
+          else if (value == 'a') {
+            addEntryAfterListCreation = true;
+            beginIndexInput(IndexInputStage.OVERFLOW);
+          } else if (value == '*') openKeytermCards();
         }
         case INDEX_LIST_CARD, KEYTERM_CARD -> {
           if (value == 'a') beginIndexInput(IndexInputStage.ENTRY_TEXT);
@@ -342,19 +359,6 @@ public final class TuiController {
                   + "/"
                   + editor.softLimit()
                   + " code points; text is not truncated.");
-        if (editor.mode() == EditorBuffer.Mode.CARD_REFERENCE
-            || editor.mode() == EditorBuffer.Mode.INDEX_LITERAL
-            || editor.mode() == EditorBuffer.Mode.EXTERNAL_REFERENCE
-            || editor.mode() == EditorBuffer.Mode.COMMAND)
-          lines.add(editor.promptLabel() + editor.promptText());
-        if (!editor.validationMessage().isEmpty()) lines.add(editor.validationMessage());
-        if (editor.mode() == EditorBuffer.Mode.TEXT) lines.add("INSERT  Type freely    Esc NORMAL");
-        else if (editor.mode() == EditorBuffer.Mode.NORMAL)
-          lines.add(
-              "NORMAL  I Insert    H/J/K/L Move    R Card ref    T Keyterm    E ExRef    :w Save");
-        else if (editor.mode() == EditorBuffer.Mode.COMMAND)
-          lines.add("COMMAND  Enter Run    Esc Cancel");
-        else lines.add("Literal prompt    Enter Insert    Esc Return to editor");
       }
       case INSTALL_ADDRESS -> {
         lines.add("Choose a numeric-alpha address manually. No address suggestions are shown.");
@@ -390,7 +394,8 @@ public final class TuiController {
             "Index Box — divider "
                 + selectedDivider
                 + "    H/L Divider    J/K List card    Enter Open");
-        lines.add("+ New overflow list card    * Dedicated keyterm cards");
+        lines.add(
+            "A New list card and entry    + New overflow list card    * Dedicated keyterm cards");
         if (indexLists.isEmpty()) lines.add("No list cards under " + selectedDivider + ".");
         for (int index = 0; index < indexLists.size(); index++) {
           ListIndexCard card = indexLists.get(index);
@@ -491,7 +496,9 @@ public final class TuiController {
         lines.add("Home: J/K select box, L or Enter open, Q quit");
         lines.add("Desk: J/K select draft, L edit, N new, F file, X discard");
         lines.add("Main: J/K physical neighbors, G exact address; printed links are not actions");
-        lines.add("Index: H/L divider, J/K list; + overflow; * keyterms; A append; P promote");
+        lines.add("Index: H/L divider, J/K list; A create list+entry; + list; * keyterms");
+        lines.add(
+            "Index cards: A append; P promote. B/Esc Home; BibCard B flips back; Main H/K back.");
         lines.add("Bib: J/K sources, L/Enter citation, I import, C research card, A note");
         lines.add(
             "H returns to the parent screen; on Index dividers and BibCards H/L is contextual.");
@@ -821,6 +828,7 @@ public final class TuiController {
 
   private void handleIndexInput(KeyStroke key) {
     if (key.getKeyType() == KeyType.Escape) {
+      addEntryAfterListCreation = false;
       screen = indexInputReturnScreen;
       return;
     }
@@ -855,7 +863,11 @@ public final class TuiController {
         selectedIndexList = indexLists.indexOf(created);
         openIndexOwner(created.id(), true);
         screen = Screen.INDEX_LIST_CARD;
-        status = "Created " + selectedDivider + " (" + overflow + ").";
+        if (addEntryAfterListCreation) {
+          addEntryAfterListCreation = false;
+          beginIndexInput(IndexInputStage.ENTRY_TEXT);
+          status = "Created " + selectedDivider + " (" + overflow + "); enter its first entry.";
+        } else status = "Created " + selectedDivider + " (" + overflow + ").";
       } else if (indexInputStage == IndexInputStage.ENTRY_TEXT) {
         if (indexInput.isEmpty()) throw new IllegalArgumentException("Entry text cannot be empty.");
         indexAuthoredText = indexInput.toString();
