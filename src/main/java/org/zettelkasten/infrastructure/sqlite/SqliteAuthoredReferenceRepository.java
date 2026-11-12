@@ -61,11 +61,23 @@ final class SqliteAuthoredReferenceRepository implements AuthoredReferenceReposi
   @Override
   public List<AuthoredReference> findBySourceCard(UUID sourceCardId) {
     Objects.requireNonNull(sourceCardId, "sourceCardId");
-    String sql =
+    return readReferences(
         "SELECT id,source_card_id,source_run_id,kind,authored_literal,target_literal,target_card_id,"
-            + "target_source_id,target_index_id,status,created_at FROM refs WHERE source_card_id=? ORDER BY sequence";
+            + "target_source_id,target_index_id,status,created_at FROM refs WHERE source_card_id=? ORDER BY sequence",
+        sourceCardId);
+  }
+
+  @Override
+  public List<AuthoredReference> findAll() {
+    return readReferences(
+        "SELECT id,source_card_id,source_run_id,kind,authored_literal,target_literal,target_card_id,"
+            + "target_source_id,target_index_id,status,created_at FROM refs ORDER BY sequence",
+        null);
+  }
+
+  private List<AuthoredReference> readReferences(String sql, UUID sourceCardId) {
     try (PreparedStatement query = connection.prepareStatement(sql)) {
-      query.setString(1, sourceCardId.toString());
+      if (sourceCardId != null) query.setString(1, sourceCardId.toString());
       try (ResultSet rows = query.executeQuery()) {
         List<AuthoredReference> references = new ArrayList<>();
         while (rows.next()) {
@@ -90,11 +102,49 @@ final class SqliteAuthoredReferenceRepository implements AuthoredReferenceReposi
     }
   }
 
+  @Override
+  public void updateResolution(AuthoredReference reference) {
+    Objects.requireNonNull(reference, "reference");
+    if (reference.status() != ResolutionStatus.RESOLVED)
+      throw new IllegalArgumentException("Resolution updates must identify a resolved target");
+    String sql =
+        "UPDATE refs SET target_card_id=?,target_source_id=?,target_index_id=?,status=? "
+            + "WHERE id=? AND status='PENDING'";
+    try (PreparedStatement update = connection.prepareStatement(sql)) {
+      update.setString(1, value(reference.targetCardId()));
+      update.setString(2, value(reference.targetSourceId()));
+      update.setString(3, value(reference.targetIndexId()));
+      update.setString(4, reference.status().name());
+      update.setString(5, reference.id().toString());
+      if (update.executeUpdate() != 1)
+        throw new PersistenceException("Reference is no longer pending: " + reference.id());
+      events.append(
+          "ReferenceResolutionChanged",
+          "MAIN_CARD",
+          reference.sourceCardId(),
+          "{\"referenceId\":\""
+              + reference.id()
+              + "\",\"status\":\"RESOLVED\",\"targetCardId\":"
+              + nullableJson(reference.targetCardId())
+              + ",\"targetSourceId\":"
+              + nullableJson(reference.targetSourceId())
+              + ",\"targetIndexId\":"
+              + nullableJson(reference.targetIndexId())
+              + "}");
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not update authored reference resolution", exception);
+    }
+  }
+
   private static UUID uuid(String value) {
     return value == null ? null : UUID.fromString(value);
   }
 
   private static String value(UUID value) {
     return value == null ? null : value.toString();
+  }
+
+  private static String nullableJson(UUID value) {
+    return value == null ? "null" : "\"" + value + "\"";
   }
 }

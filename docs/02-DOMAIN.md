@@ -73,7 +73,9 @@ Index and Bib cards use their own lifecycle/ordering rules; do not force a Main 
 - Install atomic: validate current state, address format, uniqueness, anchor consistency, snapshot revision and write state+placement+event in one transaction; duplicate exception returns safe error, leaves draft intact.
 - Changing installedBodySnapshot is forbidden; only append annotations. If a typo must be corrected, add a correction annotation; integrity maintenance explicitly distinct.
 - Link insertion stores the *exact user-authored literal* and a typed run; no preview, suggestions or navigation action.
+- Each typed card, keyterm and external-reference run also has a normalized reference projection keyed to that run. Repeated occurrences stay separate; draft edits replace only the editable draft projection, while annotations append new projections.
 - Link target existence is not required; when resolvable, store resolved stable ID; when not, PENDING. If a referenced card is installed later, a maintenance resolver may update the resolution projection, without changing the original source literal.
+- Address references are rechecked as drafts are saved and cards are installed. Resolution changes and reference rows commit with the corresponding card operation; migration V004 backfills typed runs from older archives and records a backfill event for each occurrence.
 - IDs never reused. A BibTeX entry with same citation key is **not** automatically treated as same publication without evidence.
 
 ## Failures / edge cases

@@ -58,7 +58,7 @@ class SqlitePersistenceTest {
     Path path = temp.resolve("slipbox.db");
     SqliteDatabase database = SqliteDatabase.create(path);
     assertTrue(Files.isRegularFile(path));
-    assertEquals(3, database.schemaVersion());
+    assertEquals(4, database.schemaVersion());
     try (var connection = database.newConnection();
         Statement statement = connection.createStatement();
         var foreignKeys = statement.executeQuery("PRAGMA foreign_keys")) {
@@ -89,6 +89,9 @@ class SqlitePersistenceTest {
       assertEquals(64, migration.getString(2).length());
       assertTrue(migration.next());
       assertEquals(3, migration.getInt(1));
+      assertEquals(64, migration.getString(2).length());
+      assertTrue(migration.next());
+      assertEquals(4, migration.getInt(1));
       assertEquals(64, migration.getString(2).length());
       assertFalse(migration.next());
     }
@@ -630,12 +633,12 @@ class SqlitePersistenceTest {
       statement.execute("PRAGMA user_version = 0");
     }
     assertThrows(PersistenceException.class, () -> SqliteDatabase.open(path));
-    assertEquals(3, ArchiveOperations.pendingMigrations(path).size());
+    assertEquals(4, ArchiveOperations.pendingMigrations(path).size());
     var safetyCopy = ArchiveOperations.backupBeforeMigration(path, temp.resolve("v0-safety.db"));
     assertTrue(Files.isRegularFile(safetyCopy));
-    assertEquals(3, SqliteDatabase.migrate(path));
+    assertEquals(4, SqliteDatabase.migrate(path));
     var migrated = SqliteDatabase.open(path);
-    assertEquals(3, migrated.schemaVersion());
+    assertEquals(4, migrated.schemaVersion());
     boolean noDrafts = migrated.unitOfWork().transact(tx -> tx.mainCards().findDrafts().isEmpty());
     assertTrue(noDrafts);
     try (var connection = migrated.newConnection();
@@ -643,6 +646,80 @@ class SqlitePersistenceTest {
         var row = statement.executeQuery("SELECT note FROM legacy_fixture")) {
       assertTrue(row.next());
       assertEquals("preserve existing data", row.getString(1));
+    }
+  }
+
+  @Test
+  void v3MigrationBackfillsTypedRunsWithProvenanceAndPreservesBackup() throws Exception {
+    Path path = temp.resolve("v3-reference-fixture.db");
+    String cardId = UUID.randomUUID().toString();
+    String containerId = UUID.randomUUID().toString();
+    String runId = UUID.randomUUID().toString();
+    try (var connection = DriverManager.getConnection("jdbc:sqlite:" + path)) {
+      new MigrationRunner().migrateThrough(connection, 3);
+      try (var insert =
+          connection.prepareStatement(
+              "INSERT INTO cards(id,kind,state,revision,created_at) VALUES(?,'MAIN','DRAFT',0,'2026-01-01T00:00:00Z')")) {
+        insert.setString(1, cardId);
+        insert.executeUpdate();
+      }
+      try (var insert =
+          connection.prepareStatement(
+              "INSERT INTO run_containers(id,card_id,container_kind,ordinal,created_at) VALUES(?,?,'ORIGINAL',0,'2026-01-01T00:00:00Z')")) {
+        insert.setString(1, containerId);
+        insert.setString(2, cardId);
+        insert.executeUpdate();
+      }
+      try (var insert =
+          connection.prepareStatement(
+              "INSERT INTO card_runs(id,container_id,run_order,run_kind,authored_literal) VALUES(?,?,0,'CARD_LINK','~/2a')")) {
+        insert.setString(1, runId);
+        insert.setString(2, containerId);
+        insert.executeUpdate();
+      }
+    }
+
+    Path backup = ArchiveOperations.backupBeforeMigration(path, temp.resolve("v3-backup.db"));
+    assertEquals(1, ArchiveOperations.pendingMigrations(path).size());
+    assertEquals(4, SqliteDatabase.migrate(path));
+    try (var connection = DriverManager.getConnection("jdbc:sqlite:" + path);
+        var query = connection.createStatement();
+        var reference =
+            query.executeQuery(
+                "SELECT id,source_card_id,source_run_id,kind,authored_literal,target_literal,status FROM refs")) {
+      assertTrue(reference.next());
+      assertEquals(runId, reference.getString(1));
+      assertEquals(cardId, reference.getString(2));
+      assertEquals(runId, reference.getString(3));
+      assertEquals("BRANCH", reference.getString(4));
+      assertEquals("~/2a", reference.getString(5));
+      assertEquals("~/2a", reference.getString(6));
+      assertEquals("PENDING", reference.getString(7));
+      assertFalse(reference.next());
+    }
+    try (var connection = DriverManager.getConnection("jdbc:sqlite:" + path);
+        var query = connection.createStatement();
+        var events =
+            query.executeQuery(
+                "SELECT event_type FROM domain_events WHERE event_type='ReferenceProjectionBackfilled'")) {
+      assertTrue(events.next());
+      assertFalse(events.next());
+    }
+    try (var connection = DriverManager.getConnection("jdbc:sqlite:" + backup);
+        var query = connection.createStatement();
+        var version = query.executeQuery("PRAGMA user_version")) {
+      assertTrue(version.next());
+      assertEquals(3, version.getInt(1));
+      try (var oldRun = query.executeQuery("SELECT id,authored_literal FROM card_runs")) {
+        assertTrue(oldRun.next());
+        assertEquals(runId, oldRun.getString(1));
+        assertEquals("~/2a", oldRun.getString(2));
+      }
+    }
+    try (var connection = DriverManager.getConnection("jdbc:sqlite:" + path);
+        var query = connection.createStatement();
+        var integrity = query.executeQuery("PRAGMA foreign_key_check")) {
+      assertFalse(integrity.next());
     }
   }
 

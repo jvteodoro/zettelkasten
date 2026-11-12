@@ -17,8 +17,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.zettelkasten.application.MainCardService;
-import org.zettelkasten.domain.AddressReference;
-import org.zettelkasten.domain.AuthoredReference;
 import org.zettelkasten.domain.BibCard;
 import org.zettelkasten.domain.BibNote;
 import org.zettelkasten.domain.BibliographicSource;
@@ -100,10 +98,6 @@ class GraphProjectionExporterTest {
                               NOW,
                               null));
               tx.indexCards().recordPromotion(sourceEntry, promotedEntry, keyterm, NOW);
-              tx.references()
-                  .insert(
-                      AuthoredReference.card(
-                          uuid(117), draft.id(), uuid(101), AddressReference.parse("8/1"), NOW));
               var bibCard = new BibCard(uuid(115), source.id(), NOW, "Goal", "Overview");
               tx.bibliography().insertBibCard(bibCard);
               tx.bibliography()
@@ -119,6 +113,12 @@ class GraphProjectionExporterTest {
                           draft.id()));
               return null;
             });
+
+    try (var connection = database.newConnection();
+        var delete = connection.prepareStatement("DELETE FROM refs WHERE source_run_id=?")) {
+      delete.setString(1, uuid(101).toString());
+      assertEquals(1, delete.executeUpdate());
+    }
 
     Path first = new GraphProjectionExporter(database).export(temp.resolve("graph-one"));
     Path second = new GraphProjectionExporter(database).export(temp.resolve("graph-two"));

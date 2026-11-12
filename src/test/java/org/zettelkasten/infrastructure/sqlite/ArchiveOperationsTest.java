@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.zettelkasten.application.MainCardService;
-import org.zettelkasten.domain.AuthoredReference;
 import org.zettelkasten.domain.BibCard;
 import org.zettelkasten.domain.BibNote;
 import org.zettelkasten.domain.BibliographicSource;
@@ -127,13 +126,6 @@ class ArchiveOperationsTest {
                       sourceRecord.rawRecord(),
                       "NEW",
                       "");
-              tx.references()
-                  .insert(
-                      AuthoredReference.card(uuid(218), draft.id(), link.id(), link.target(), NOW));
-              tx.references()
-                  .insert(
-                      AuthoredReference.external(
-                          uuid(219), draft.id(), external.id(), "b.paper, p. 27", NOW));
               return null;
             });
     assertTrue(new ArchiveOperations(source).doctor().healthy());

@@ -21,6 +21,11 @@ namespace, descriptive source name, whole-file SHA-256, raw file content, per-en
 outcome, and domain event in the same transaction as any accepted source records.
 Rejected files keep their diagnostics but commit no new bibliographic sources.
 
+Migration V004 projects existing typed Main card runs into normalized authored
+references, preserving each run ID, literal, and reference type. It records one
+backfill event per projected occurrence; normal draft, install, and annotation
+operations maintain these projections in the same unit of work as their card rows.
+
 Opening an existing archive validates its current migration checksums and refuses
 an older schema without modifying it. `migrate --dry-run` reports the pending
 versions; `migrate --apply` first writes a verified sibling SQLite backup and
@@ -98,12 +103,13 @@ CREATE TABLE domain_events (
 );
 ~~~
 
-**Important:** the illustrative DDL above is not the complete production schema. The migration issue must flesh out normalized \`annotations\`, \`index_list_cards\`, \`index_entries\`, \`keyterm_cards\`, \`bibliographic_sources\`, \`source_external_ids\`, \`bibcards\`, \`bibnotes\`, \`import_batches\` and \`import_entries\`, proper FKs, an immutable body snapshot policy and all indexes. For \`card_runs\`, nullable \`annotation_id\` in a SQLite UNIQUE does not enforce uniqueness for NULL; choose a nonnullable parent/container ID or expression index for actual correctness. Do **not** ship the illustrative SQL verbatim without addressing this.
+**Important:** the illustrative DDL above is not the complete production schema. The final numbered migrations define normalized \`annotations\`, \`index_list_cards\`, \`index_entries\`, \`keyterm_cards\`, \`bibliographic_sources\`, \`source_external_ids\`, \`bibcards\`, \`bibnotes\`, \`import_batches\` and \`import_entries\`, proper FKs, an immutable body snapshot policy and all indexes. For \`card_runs\`, nullable \`annotation_id\` in a SQLite UNIQUE does not enforce uniqueness for NULL; use the nonnullable parent/container ID in production.
 
 ## Guarantees
 
 - No row updates to installed original \`card_runs\` through normal app services; provide app-level guard and database trigger/check for immutability after installation. Appends have separate rows/parent.
 - A successful install is one transaction: address conflict checks, placement, state transition, event insert and reference re-resolution commit together.
+- Typed card, keyterm and external-reference runs are projected into `refs` in the same unit of work. V004 backfills those projections in V3 archives without changing the run literal, and records `ReferenceProjectionBackfilled` events.
 - A failed install or import rolls back entirely and leaves original draft and references.
 - DB stores raw address and canonical address, original link literals, raw imported metadata and schema versions.
 - Every schema-changing migration is append-only numbered and checksummed; backup before upgrading an existing user file, no downgrade without explicit export/restore.

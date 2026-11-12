@@ -9,4 +9,8 @@ public interface AuthoredReferenceRepository {
   void insert(AuthoredReference reference);
 
   List<AuthoredReference> findBySourceCard(UUID sourceCardId);
+
+  List<AuthoredReference> findAll();
+
+  void updateResolution(AuthoredReference reference);
 }

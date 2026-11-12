@@ -48,7 +48,7 @@ class TuiControllerTest {
     controller.handle(key(KeyType.Enter));
     assertEquals(1, eventCount(database));
     controller.handle(ctrl('s'));
-    assertEquals(2, eventCount(database));
+    assertEquals(3, eventCount(database));
     controller.handle(key(KeyType.Escape));
     assertEquals(TuiController.Screen.DESK, controller.screen());
 

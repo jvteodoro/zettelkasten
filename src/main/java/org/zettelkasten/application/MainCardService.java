@@ -19,11 +19,13 @@ public final class MainCardService {
   private final UnitOfWork unitOfWork;
   private final Clock clock;
   private final Supplier<UUID> ids;
+  private final AuthoredReferenceService authoredReferences;
 
   public MainCardService(UnitOfWork unitOfWork, Clock clock, Supplier<UUID> ids) {
     this.unitOfWork = Objects.requireNonNull(unitOfWork, "unitOfWork");
     this.clock = Objects.requireNonNull(clock, "clock");
     this.ids = Objects.requireNonNull(ids, "ids");
+    this.authoredReferences = new AuthoredReferenceService(clock);
   }
 
   public MainCard createDraft(List<BodyRun> initialBody) {
@@ -31,6 +33,8 @@ public final class MainCardService {
     unitOfWork.transact(
         tx -> {
           tx.mainCards().insertDraft(draft);
+          authoredReferences.recordRuns(tx, draft.id(), draft.authoredBody());
+          authoredReferences.resolvePending(tx);
           return null;
         });
     return draft;
@@ -43,6 +47,8 @@ public final class MainCardService {
           MainCard current = requireCard(tx.mainCards().findById(cardId), cardId);
           MainCard edited = current.editDraft(expectedRevision, newBody);
           tx.mainCards().updateDraft(edited, expectedRevision);
+          authoredReferences.recordRuns(tx, edited.id(), edited.authoredBody());
+          authoredReferences.resolvePending(tx);
           return edited;
         });
   }
@@ -66,6 +72,7 @@ public final class MainCardService {
               new PlacementSnapshot(
                   cardId, address, predecessor, successor, installed.installedAt());
           tx.mainCards().install(installed, placement, expectedRevision);
+          authoredReferences.resolvePending(tx);
           return installed;
         });
   }
@@ -78,6 +85,8 @@ public final class MainCardService {
           MainCard current = requireCard(tx.mainCards().findById(cardId), cardId);
           current.appendAnnotation(annotation);
           tx.mainCards().appendAnnotation(cardId, annotation);
+          authoredReferences.recordRuns(tx, cardId, annotation.runs());
+          authoredReferences.resolvePending(tx);
           return null;
         });
     return annotation;
