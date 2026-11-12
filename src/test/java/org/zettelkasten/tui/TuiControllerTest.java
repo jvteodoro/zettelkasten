@@ -29,6 +29,7 @@ import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 import org.zettelkasten.domain.BibNote;
 import org.zettelkasten.domain.CardLinkRun;
+import org.zettelkasten.domain.MainCard;
 import org.zettelkasten.infrastructure.bibtex.JBibTeXFileParser;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
 
@@ -42,7 +43,7 @@ class TuiControllerTest {
     var database = database();
     var service = service(database);
     var controller = new TuiController(service, sequence(300));
-    controller.handle(character('d'));
+    controller.handle(character('l'));
     assertEquals(TuiController.Screen.DESK, controller.screen());
     controller.handle(character('n'));
     assertEquals(TuiController.Screen.EDITOR, controller.screen());
@@ -71,8 +72,8 @@ class TuiControllerTest {
     assertTrue(controller.status().contains("filed"));
 
     controller.handle(key(KeyType.Escape));
-    controller.handle(character('m'));
-    controller.handle(key(KeyType.Enter));
+    controller.handle(character('j'));
+    controller.handle(character('l'));
     assertEquals(TuiController.Screen.MAIN, controller.screen());
     assertEquals(
         "3118/1",
@@ -84,11 +85,51 @@ class TuiControllerTest {
   }
 
   @Test
+  void vimNavigationMovesBoxesAndListsWhileEditorKeepsLettersLiteral() {
+    var database = database();
+    var service = service(database);
+    MainCard first =
+        service.createDraft(
+            List.of(new org.zettelkasten.domain.TextRun(new UUID(0, 801), "first draft")));
+    MainCard second =
+        service.createDraft(
+            List.of(new org.zettelkasten.domain.TextRun(new UUID(0, 802), "second draft")));
+    MainCard one = service.createDraft(List.of());
+    MainCard two = service.createDraft(List.of());
+    service.installMainCard(one.id(), 0, "3118/1");
+    service.installMainCard(two.id(), 0, "3118/2");
+
+    var controller = new TuiController(service, sequence(803));
+    controller.handle(character('j'));
+    assertTrue(controller.viewLines().get(1).startsWith("> Main"));
+    controller.handle(character('l'));
+    assertEquals(TuiController.Screen.MAIN, controller.screen());
+    assertTrue(controller.viewLines().contains("Address 3118/1"));
+    controller.handle(character('j'));
+    assertTrue(controller.viewLines().contains("Address 3118/2"));
+    controller.handle(character('k'));
+    assertTrue(controller.viewLines().contains("Address 3118/1"));
+    controller.handle(character('h'));
+    assertEquals(TuiController.Screen.HOME, controller.screen());
+
+    controller.handle(character('k'));
+    controller.handle(character('l'));
+    assertEquals(TuiController.Screen.DESK, controller.screen());
+    controller.handle(character('j'));
+    controller.handle(character('l'));
+    assertEquals(second.id(), service.getDrafts().get(1).id());
+    assertEquals("second draft", controller.editor().renderedText());
+    controller.handle(character('j'));
+    assertEquals("second draftj", controller.editor().renderedText());
+    assertEquals(first.id(), service.getDrafts().getFirst().id());
+  }
+
+  @Test
   void unsavedExitRequiresAnExplicitChoiceAndCtrlCDoesNotDiscard() {
     var database = database();
     var service = service(database);
     var controller = new TuiController(service, sequence(400));
-    controller.handle(character('d'));
+    controller.handle(character('l'));
     controller.handle(character('n'));
     controller.handle(character('x'));
     controller.handle(new KeyStroke((char) 3, true, false));
@@ -109,7 +150,7 @@ class TuiControllerTest {
         service.createDraft(
             List.of(new org.zettelkasten.domain.TextRun(new UUID(0, 777), "keep audit")));
     var controller = new TuiController(service, sequence(780));
-    controller.handle(character('d'));
+    controller.handle(character('l'));
     controller.handle(character('x'));
     assertEquals(TuiController.Screen.CONFIRM_SAVED_DRAFT_DISCARD, controller.screen());
     controller.handle(character('n'));
@@ -140,7 +181,7 @@ class TuiControllerTest {
   @Test
   void activeEditorPreservesUnicodeTextAndCursorAcrossTerminalResizes() throws Exception {
     var controller = new TuiController(service(database()), sequence(650));
-    controller.handle(character('d'));
+    controller.handle(character('l'));
     controller.handle(character('n'));
     type(controller, "Antes 漢字 e\u0301");
     var terminal = new DefaultVirtualTerminal(new TerminalSize(80, 24));
@@ -208,7 +249,7 @@ class TuiControllerTest {
     service.installMainCard(right.id(), 0, "3118/3");
     service.createDraft(List.of());
     var controller = new TuiController(service, sequence(700));
-    controller.handle(character('d'));
+    controller.handle(character('l'));
     controller.handle(character('f'));
     type(controller, "3118/2a");
     List<String> prompt = controller.viewLines();
@@ -221,7 +262,8 @@ class TuiControllerTest {
         service.getInstalledInAddressOrder().stream().map(card -> card.addressLiteral()).toList());
 
     controller.handle(key(KeyType.Escape));
-    controller.handle(character('m'));
+    controller.handle(character('j'));
+    controller.handle(character('l'));
     controller.handle(character('g'));
     type(controller, "3118/9");
     controller.handle(key(KeyType.Enter));
@@ -238,7 +280,9 @@ class TuiControllerTest {
         new IndexService(database.unitOfWork(), Clock.fixed(NOW, ZoneOffset.UTC), sequence(900));
     var controller = new TuiController(mainCards, indexService, sequence(1_000));
 
-    controller.handle(character('i'));
+    controller.handle(character('j'));
+    controller.handle(character('j'));
+    controller.handle(character('l'));
     controller.handle(character('a'));
     controller.handle(character('+'));
     type(controller, "1");
@@ -253,7 +297,7 @@ class TuiControllerTest {
             .map(entry -> entry.authoredText())
             .toList());
 
-    controller.handle(key(KeyType.ArrowUp));
+    controller.handle(character('k'));
     controller.handle(key(KeyType.Enter));
     assertTrue(controller.status().contains("3118/99"));
     assertEquals(TuiController.Screen.INDEX_LIST_CARD, controller.screen());
@@ -287,7 +331,10 @@ class TuiControllerTest {
         "@article{paperkey, author={Müller, Ada}, title={Reading by Hand}, abstract={Imported abstract}}",
         java.nio.charset.StandardCharsets.UTF_8);
 
-    controller.handle(character('b'));
+    controller.handle(character('j'));
+    controller.handle(character('j'));
+    controller.handle(character('j'));
+    controller.handle(character('l'));
     controller.handle(character('i'));
     type(controller, bibFile.toString());
     controller.handle(key(KeyType.Enter));
@@ -320,7 +367,7 @@ class TuiControllerTest {
         controller.viewLines().stream()
             .anyMatch(line -> line.contains("Reading goal: Read for an argument")));
 
-    controller.handle(character('b'));
+    controller.handle(character('l'));
     controller.handle(character('a'));
     controller.handle(character('p'));
     type(controller, "27");
@@ -340,7 +387,10 @@ class TuiControllerTest {
     controller.handle(key(KeyType.Escape));
     controller.handle(key(KeyType.Escape));
     controller.handle(key(KeyType.Escape));
-    controller.handle(character('d'));
+    controller.handle(character('k'));
+    controller.handle(character('k'));
+    controller.handle(character('k'));
+    controller.handle(character('l'));
     controller.handle(character('n'));
     controller.handle(ctrl('e'));
     type(controller, "b.paperkey, p. 27");
@@ -351,7 +401,8 @@ class TuiControllerTest {
     type(controller, "3118/27");
     controller.handle(key(KeyType.Enter));
     controller.handle(key(KeyType.Escape));
-    controller.handle(character('m'));
+    controller.handle(character('j'));
+    controller.handle(character('l'));
     assertTrue(controller.viewLines().contains("b.paperkey, p. 27"));
 
     var reopened = SqliteDatabase.open(database.path());

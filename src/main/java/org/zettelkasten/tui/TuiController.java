@@ -79,6 +79,7 @@ public final class TuiController {
   private List<MainCard> installed = List.of();
   private int selectedDraft;
   private int selectedMain;
+  private int selectedHomeSection;
   private MainCard currentDraft;
   private EditorBuffer editor;
   private final StringBuilder addressInput = new StringBuilder();
@@ -171,17 +172,7 @@ public final class TuiController {
       return;
     }
     if (key.getKeyType() == KeyType.Escape) {
-      screen =
-          switch (screen) {
-            case INDEX_LIST_CARD -> Screen.INDEX;
-            case KEYTERM_CARDS -> Screen.INDEX;
-            case KEYTERM_CARD -> Screen.KEYTERM_CARDS;
-            case BIB_SOURCE -> Screen.BIB;
-            case BIB_CARD -> Screen.BIB_SOURCE;
-            case BIB_IMPORT_PREVIEW -> Screen.BIB;
-            default -> Screen.HOME;
-          };
-      status = "";
+      handleBack();
       return;
     }
     if (key.getKeyType() == KeyType.Character && !key.isCtrlDown()) {
@@ -190,102 +181,113 @@ public final class TuiController {
         quitRequested = true;
         return;
       }
-      if (screen == Screen.HOME) {
-        switch (value) {
-          case 'd' -> openDesk();
-          case 'm' -> openMain();
-          case 'i' -> openIndex();
-          case 'b' -> openBibliography();
-          case '?' -> screen = Screen.HELP;
-          default -> {}
+      if (value == 'j' || value == 'k') {
+        moveSelection(value == 'j' ? 1 : -1);
+        return;
+      }
+      if (value == 'h' && screen != Screen.INDEX && screen != Screen.BIB_CARD) {
+        handleBack();
+        return;
+      }
+      switch (screen) {
+        case HOME -> {
+          if (value == 'l') openSelectedHomeSection();
+          else if (value == '?') screen = Screen.HELP;
         }
-      } else if (screen == Screen.DESK) {
-        switch (value) {
-          case 'n' -> createDraft();
-          case 'f' -> beginAddressPrompt(Screen.INSTALL_ADDRESS);
-          case 'x' -> beginSavedDraftDiscard();
-          default -> {}
+        case DESK -> {
+          if (value == 'n') createDraft();
+          else if (value == 'f') beginAddressPrompt(Screen.INSTALL_ADDRESS);
+          else if (value == 'x') beginSavedDraftDiscard();
+          else if (value == 'l') openSelectedDraft();
         }
-      } else if (screen == Screen.MAIN) {
-        switch (value) {
-          case 'n' -> moveMain(1);
-          case 'p' -> moveMain(-1);
-          case 'g' -> beginAddressPrompt(Screen.MAIN_ADDRESS);
-          default -> {}
+        case MAIN -> {
+          if (value == 'g') beginAddressPrompt(Screen.MAIN_ADDRESS);
         }
-      } else if (screen == Screen.INDEX) {
-        if (value >= 'a' && value <= 'z') selectDivider(value);
-        else if (value == '+') beginIndexInput(IndexInputStage.OVERFLOW);
-        else if (value == '*') openKeytermCards();
-      } else if (screen == Screen.INDEX_LIST_CARD || screen == Screen.KEYTERM_CARD) {
-        if (value == 'a') beginIndexInput(IndexInputStage.ENTRY_TEXT);
-        else if (value == 'p' && screen == Screen.INDEX_LIST_CARD) promoteSelectedEntry();
-        else if (value == 'n') moveIndexEntry(1);
-        else if (value == 'u') moveIndexEntry(-1);
-      } else if (screen == Screen.KEYTERM_CARDS) {
-        if (value == 'u') moveKeyterm(-1);
-        else if (value == 'n') moveKeyterm(1);
-      } else if (screen == Screen.BIB) {
-        if (value == 'i') beginBibInput(BibInputStage.IMPORT_PATH);
-      } else if (screen == Screen.BIB_SOURCE) {
-        if (value == 'c') beginBibInput(BibInputStage.CARD_GOAL);
-      } else if (screen == Screen.BIB_CARD) {
-        if (value == 'a') beginBibInput(BibInputStage.NOTE_TYPE);
-        else if (value == 'b') showingBibBack = true;
-        else if (value == 'f') showingBibBack = false;
-      } else if (screen == Screen.BIB_IMPORT_PREVIEW && value == 'a') {
-        applyBibImport();
+        case INDEX -> {
+          if (value == 'h') selectDivider((char) Math.max('A', selectedDivider - 1));
+          else if (value == 'l') selectDivider((char) Math.min('Z', selectedDivider + 1));
+          else if (value == '+') beginIndexInput(IndexInputStage.OVERFLOW);
+          else if (value == '*') openKeytermCards();
+        }
+        case INDEX_LIST_CARD, KEYTERM_CARD -> {
+          if (value == 'a') beginIndexInput(IndexInputStage.ENTRY_TEXT);
+          else if (value == 'p' && screen == Screen.INDEX_LIST_CARD) promoteSelectedEntry();
+        }
+        case KEYTERM_CARDS -> {
+          if (value == 'l') openSelectedKeyterm();
+        }
+        case BIB -> {
+          if (value == 'l') openSelectedSource();
+          else if (value == 'i') beginBibInput(BibInputStage.IMPORT_PATH);
+        }
+        case BIB_SOURCE -> {
+          if (value == 'c') beginBibInput(BibInputStage.CARD_GOAL);
+          else if (value == 'l') openResearchCard();
+        }
+        case BIB_CARD -> {
+          if (value == 'a') beginBibInput(BibInputStage.NOTE_TYPE);
+          else if (value == 'h') showingBibBack = false;
+          else if (value == 'l') showingBibBack = true;
+        }
+        case BIB_IMPORT_PREVIEW -> {
+          if (value == 'a') applyBibImport();
+        }
+        case HELP -> {
+          // h is handled by the common back action above.
+        }
+        default -> {}
       }
       return;
     }
-    if (key.getKeyType() == KeyType.Enter && screen == Screen.DESK) {
-      openSelectedDraft();
-    } else if (key.getKeyType() == KeyType.ArrowUp && screen == Screen.DESK) {
-      selectedDraft = Math.max(0, selectedDraft - 1);
-    } else if (key.getKeyType() == KeyType.ArrowDown && screen == Screen.DESK) {
-      selectedDraft = Math.min(Math.max(0, drafts.size() - 1), selectedDraft + 1);
-    } else if (screen == Screen.INDEX && key.getKeyType() == KeyType.ArrowLeft) {
-      selectDivider((char) Math.max('A', selectedDivider - 1));
-    } else if (screen == Screen.INDEX && key.getKeyType() == KeyType.ArrowRight) {
-      selectDivider((char) Math.min('Z', selectedDivider + 1));
-    } else if (screen == Screen.INDEX && key.getKeyType() == KeyType.ArrowUp) {
-      selectedIndexList = Math.max(0, selectedIndexList - 1);
-    } else if (screen == Screen.INDEX && key.getKeyType() == KeyType.ArrowDown) {
-      selectedIndexList = Math.min(Math.max(0, indexLists.size() - 1), selectedIndexList + 1);
-    } else if (screen == Screen.INDEX && key.getKeyType() == KeyType.Enter) {
-      openSelectedIndexList();
-    } else if (screen == Screen.INDEX_LIST_CARD && key.getKeyType() == KeyType.ArrowUp) {
-      moveIndexEntry(-1);
-    } else if (screen == Screen.INDEX_LIST_CARD && key.getKeyType() == KeyType.ArrowDown) {
-      moveIndexEntry(1);
-    } else if (screen == Screen.INDEX_LIST_CARD && key.getKeyType() == KeyType.Enter) {
-      showSelectedEntryPointer();
-    } else if (screen == Screen.KEYTERM_CARDS && key.getKeyType() == KeyType.ArrowUp) {
-      moveKeyterm(-1);
-    } else if (screen == Screen.KEYTERM_CARDS && key.getKeyType() == KeyType.ArrowDown) {
-      moveKeyterm(1);
-    } else if (screen == Screen.KEYTERM_CARDS && key.getKeyType() == KeyType.Enter) {
-      openSelectedKeyterm();
-    } else if (screen == Screen.KEYTERM_CARD && key.getKeyType() == KeyType.ArrowUp) {
-      moveIndexEntry(-1);
-    } else if (screen == Screen.KEYTERM_CARD && key.getKeyType() == KeyType.ArrowDown) {
-      moveIndexEntry(1);
-    } else if (screen == Screen.KEYTERM_CARD && key.getKeyType() == KeyType.Enter) {
-      showSelectedEntryPointer();
-    } else if (screen == Screen.BIB && key.getKeyType() == KeyType.ArrowUp) {
-      selectedSource = Math.max(0, selectedSource - 1);
-    } else if (screen == Screen.BIB && key.getKeyType() == KeyType.ArrowDown) {
-      selectedSource = Math.min(Math.max(0, sources.size() - 1), selectedSource + 1);
-    } else if (screen == Screen.BIB && key.getKeyType() == KeyType.Enter) {
-      openSelectedSource();
-    } else if (screen == Screen.BIB_SOURCE && key.getKeyType() == KeyType.Enter) {
-      openResearchCard();
-    } else if (screen == Screen.BIB_IMPORT_PREVIEW
-        && key.getKeyType() == KeyType.Character
-        && !key.isCtrlDown()
-        && Character.toLowerCase(key.getCharacter()) == 'a') {
-      applyBibImport();
+    if (key.getKeyType() == KeyType.Enter) {
+      switch (screen) {
+        case HOME -> openSelectedHomeSection();
+        case DESK -> openSelectedDraft();
+        case INDEX -> openSelectedIndexList();
+        case INDEX_LIST_CARD, KEYTERM_CARD -> showSelectedEntryPointer();
+        case KEYTERM_CARDS -> openSelectedKeyterm();
+        case BIB -> openSelectedSource();
+        case BIB_SOURCE -> openResearchCard();
+        default -> {}
+      }
     }
+  }
+
+  private void moveSelection(int direction) {
+    switch (screen) {
+      case HOME -> selectedHomeSection = Math.max(0, Math.min(3, selectedHomeSection + direction));
+      case DESK -> {
+        refreshDrafts();
+        selectedDraft =
+            Math.max(0, Math.min(Math.max(0, drafts.size() - 1), selectedDraft + direction));
+      }
+      case MAIN -> moveMain(direction);
+      case INDEX ->
+          selectedIndexList =
+              Math.max(
+                  0, Math.min(Math.max(0, indexLists.size() - 1), selectedIndexList + direction));
+      case INDEX_LIST_CARD, KEYTERM_CARD -> moveIndexEntry(direction);
+      case KEYTERM_CARDS -> moveKeyterm(direction);
+      case BIB -> {
+        refreshSources();
+        selectedSource =
+            Math.max(0, Math.min(Math.max(0, sources.size() - 1), selectedSource + direction));
+      }
+      default -> {}
+    }
+  }
+
+  private void handleBack() {
+    screen =
+        switch (screen) {
+          case INDEX_LIST_CARD, KEYTERM_CARDS -> Screen.INDEX;
+          case KEYTERM_CARD -> Screen.KEYTERM_CARDS;
+          case BIB_SOURCE -> Screen.BIB;
+          case BIB_CARD -> Screen.BIB_SOURCE;
+          case BIB_IMPORT_PREVIEW -> Screen.BIB;
+          default -> Screen.HOME;
+        };
+    status = "";
   }
 
   public Screen screen() {
@@ -308,14 +310,21 @@ public final class TuiController {
     List<String> lines = new ArrayList<>();
     switch (screen) {
       case HOME -> {
-        lines.add("D  Desk — unfiled Main drafts");
-        lines.add("M  Main — browse installed cards by physical order");
-        lines.add("I  Index — manually authored entry cards");
-        lines.add("B  Bib — sources and research cards");
+        lines.add((selectedHomeSection == 0 ? "> " : "  ") + "Desk — unfiled Main drafts");
+        lines.add(
+            (selectedHomeSection == 1 ? "> " : "  ")
+                + "Main — browse installed cards by physical order");
+        lines.add(
+            (selectedHomeSection == 2 ? "> " : "  ") + "Index — manually authored entry cards");
+        lines.add((selectedHomeSection == 3 ? "> " : "  ") + "Bib — sources and research cards");
+        lines.add("J/K Select    L or Enter Open");
         lines.add("Q  Quit");
       }
       case DESK -> {
-        lines.add("Drafts: " + drafts.size() + "    N New    Enter Edit    F File    X Discard");
+        lines.add(
+            "Drafts: "
+                + drafts.size()
+                + "    J/K Select    L Edit    N New    F File    X Discard");
         if (drafts.isEmpty()) lines.add("The Desk is empty.");
         for (int index = 0; index < drafts.size(); index++) {
           MainCard draft = drafts.get(index);
@@ -347,7 +356,7 @@ public final class TuiController {
         lines.add("Enter Install    Esc Cancel");
       }
       case MAIN -> {
-        lines.add("Main — physical address order    G Exact address    N/P Adjacent card");
+        lines.add("Main — physical address order    J/K Next/previous    G Exact address");
         if (installed.isEmpty()) lines.add("No installed Main cards.");
         else {
           MainCard card = installed.get(selectedMain);
@@ -360,7 +369,7 @@ public final class TuiController {
                     annotation ->
                         lines.addAll(annotation.runs().stream().map(BodyRun::literal).toList()));
           }
-          lines.add("N/P move by filing order. Printed references are not selectable.");
+          lines.add("J/K move by filing order. Printed references are not selectable.");
         }
       }
       case MAIN_ADDRESS -> {
@@ -372,7 +381,7 @@ public final class TuiController {
         lines.add(
             "Index Box — divider "
                 + selectedDivider
-                + "    ←/→ Divider    ↑/↓ List card    Enter Open");
+                + "    H/L Divider    J/K List card    Enter Open");
         lines.add("+ New overflow list card    * Dedicated keyterm cards");
         if (indexLists.isEmpty()) lines.add("No list cards under " + selectedDivider + ".");
         for (int index = 0; index < indexLists.size(); index++) {
@@ -388,7 +397,7 @@ public final class TuiController {
       }
       case INDEX_LIST_CARD, KEYTERM_CARD -> {
         lines.add(selectedOwnerIsList ? "List Index card" : "Dedicated keyterm card");
-        lines.add("↑/↓ Select entry    A Add entry    Enter Read pointer");
+        lines.add("J/K Select entry    A Add entry    Enter Read pointer");
         if (selectedOwnerIsList) lines.add("P Promote selected entry to a dedicated keyterm card");
         if (indexEntries.isEmpty()) lines.add("No authored entries yet.");
         for (int index = 0; index < indexEntries.size(); index++) {
@@ -400,7 +409,7 @@ public final class TuiController {
         lines.add("Pointers are printed text; open Main and enter an address yourself.");
       }
       case KEYTERM_CARDS -> {
-        lines.add("Dedicated keyterm cards — alphabetical    ↑/↓ Select    Enter Open");
+        lines.add("Dedicated keyterm cards — alphabetical    J/K Select    L/Enter Open");
         if (keytermCards.isEmpty()) lines.add("No dedicated keyterm cards.");
         for (int index = 0; index < keytermCards.size(); index++) {
           lines.add((index == selectedKeyterm ? "> " : "  ") + keytermCards.get(index).keyterm());
@@ -412,7 +421,7 @@ public final class TuiController {
         lines.add("Enter Continue    Esc Cancel");
       }
       case BIB -> {
-        lines.add("Bibliography Box — ↑/↓ Select source    Enter Read citation    I Import BibTeX");
+        lines.add("Bibliography Box — J/K Select    L/Enter Read citation    I Import BibTeX");
         if (sources.isEmpty()) lines.add("No bibliographic sources are filed.");
         for (int index = 0; index < sources.size(); index++) {
           BibliographicSource source = sources.get(index);
@@ -431,7 +440,7 @@ public final class TuiController {
                 .map(alias -> "Citation key: " + alias.externalId())
                 .toList());
         if (bibliography.findBibCardForSource(currentSource.id()).isPresent())
-          lines.add("Research BibCard exists. Enter to read it.");
+          lines.add("Research BibCard exists. L/Enter to read it.");
         else lines.add("No user-authored research BibCard yet. C Create goal and overview.");
         lines.add("Esc Return to source list. Main ExRefs are entered literally with Ctrl+E.");
       }
@@ -442,12 +451,12 @@ public final class TuiController {
         if (!showingBibBack) {
           lines.add("Reading goal: " + currentBibCard.readingGoal());
           lines.add("Source overview: " + currentBibCard.sourceOverview());
-          lines.add("B Read back/BibNotes    A Append a located BibNote");
+          lines.add("L Read back/BibNotes    A Append a located BibNote");
         } else {
           if (bibNotes.isEmpty()) lines.add("No user-authored BibNotes.");
           for (BibNote note : bibNotes)
             lines.add("(" + note.locatorLiteral() + ") " + note.authoredText());
-          lines.add("F Read front    A Append a located BibNote");
+          lines.add("H Read front    A Append a located BibNote");
         }
       }
       case BIB_INPUT -> {
@@ -469,12 +478,12 @@ public final class TuiController {
       }
       case HELP -> {
         lines.add("Keyboard help");
-        lines.add("Home: D Desk, M Main, I Index, B Bib, Q Quit");
-        lines.add("Desk: N New draft, Enter Edit, F File at a manually chosen address");
-        lines.add("Main: G exact address, N/P physical neighbors; printed links are not actions");
-        lines.add("Index: A–Z divider; + overflow; * keyterms; A append entry; P promote");
-        lines.add(
-            "Bib: ↑/↓ source, Enter citation, I import with reconciliation, C research card, A note");
+        lines.add("Home: J/K select box, L or Enter open, Q quit");
+        lines.add("Desk: J/K select draft, L edit, N new, F file, X discard");
+        lines.add("Main: J/K physical neighbors, G exact address; printed links are not actions");
+        lines.add("Index: H/L divider, J/K list; + overflow; * keyterms; A append; P promote");
+        lines.add("Bib: J/K sources, L/Enter citation, I import, C research card, A note");
+        lines.add("H returns to the parent screen; in the BibCard, H/L reads front/back.");
         lines.add("Editor: Ctrl+S Save, Ctrl+L card reference, Ctrl+K keyterm, Ctrl+E ExRef");
         lines.add(
             "Esc returns or cancels a literal prompt. No search, suggestions, or link following.");
@@ -495,6 +504,16 @@ public final class TuiController {
   private void openDesk() {
     refreshDrafts();
     screen = Screen.DESK;
+  }
+
+  private void openSelectedHomeSection() {
+    switch (selectedHomeSection) {
+      case 0 -> openDesk();
+      case 1 -> openMain();
+      case 2 -> openIndex();
+      case 3 -> openBibliography();
+      default -> throw new IllegalStateException("Unknown home section");
+    }
   }
 
   private void openIndex() {

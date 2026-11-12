@@ -15,9 +15,9 @@ Java 25 + Lanterna (ncurses-like terminal implementation, not JNA curses). Suppo
 
 ## Global navigation
 
-At home: D Desk, M Main, I Index, B Bib, ? help, Q quit with unsaved draft prompt. Within editor typing any printable char must enter literal text without mode confusion. Ctrl+S save draft; Ctrl+L link; Esc dialog cancel / back; Ctrl+C should be handled safely, not treated as data deletion. Key mapping and help documented together in one source file; key binding assertions in tests.
+At home, use J/K to select Desk, Main, Index, or Bib; L or Enter opens the selected box. H returns to a parent screen where applicable; ? opens help and Q quits with the unsaved draft prompt. Within the editor and literal prompts, printable characters—including h/j/k/l—remain authored input. Ctrl+S saves; Ctrl+L inserts a card reference; Esc cancels a dialog or returns. Ctrl+C is handled safely and is not treated as data deletion. The context-specific bindings and help are documented together and covered by key binding tests.
 
-When reading Main, N/P move to adjacent cards **without invoking a graph link traversal**. G prompts for an exact address and positions the Main drawer at that location (manual addressing is allowed). No typeahead or auto-complete. When user reads a link, it is ordinary printed text (or subtle pen-color equivalent), never a click target. An address in Index is a written pointer; user manually opens Main and types it.
+When reading Main, J/K move to adjacent cards **without invoking a graph link traversal**. G prompts for an exact address and positions the Main drawer at that location (manual addressing is allowed). No typeahead or auto-complete. When user reads a link, it is ordinary printed text (or subtle pen-color equivalent), never a click target. An address in Index is a written pointer; user manually opens Main and types it.
 
 ## Editor
 
@@ -34,7 +34,7 @@ When reading Main, N/P move to adjacent cards **without invoking a graph link tr
 
 ~~~text
 +-------------------------- ZETTELKASTEN -------------------------+
-| [D] Desk   [M] Main   [I] Index   [B] Bib                      |
+| J/K Select   H/L Move or back   L/Enter Open   ? Help   Q Quit  |
 +------------------------------ Desk -----------------------------+
 | Drafts: 3       [N] New    [Enter] Edit    [F] File [X] Discard |
 | 1  Perception and conflict              unshelved              |
@@ -72,8 +72,9 @@ explicit apply action. The exact bindings are maintained in
 an 825-codepoint configurable soft limit, warns beginning 25 codepoints early,
 and never truncates. Ctrl+L/K/E are literal prompts; lower-case `l` remains text.
 
-The Index screen now selects A–Z dividers directly, opens explicitly numbered
-overflow list cards in order, and browses dedicated keyterm cards alphabetically.
+The Index screen moves across A–Z dividers with H/L, selects overflow list cards
+and authored entries with J/K, opens explicitly numbered list cards in order,
+and browses dedicated keyterm cards alphabetically.
 On a card, `A` starts a form for authored entry text, target kind (`M`, `K`, or
 `S`), and literal target. `P` promotes the selected list entry while retaining
 the original. Entries and targets are printed text; Enter reports the literal

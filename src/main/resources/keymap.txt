@@ -1,41 +1,63 @@
-# Canonical command/keymap reference. Screen-specific keys are described in docs/04-TUI.md.
-D    Desk
-M    Main
-I    Index
-B    Bibliography
-?    Help
-Q    Quit (confirm unsaved draft)
+# Canonical command/keymap reference. Navigation uses plain vim-style keys.
+# h/j/k/l are handled by the current screen; editor and literal prompts receive text normally.
+
+Global:
+J/K    Move selection down/up; on Main move next/previous by filing order
+H      Return to the parent screen (Index divider and BibCard use H contextually)
+L      Open the selected item; on Index move to the next divider
+Enter  Open selected item or confirm the current form
+Esc    Return or cancel the current modal prompt
+Q      Quit
+?      Help (Home)
+
+Home:
+J/K    Select Desk, Main, Index, or Bib
+L/Enter  Open the selected box
+
+Desk:
+J/K    Select a saved draft
+L/Enter  Edit the selected draft
+N      Create a draft
+F      File the selected draft at a manually entered address
+X      Discard the selected saved draft after confirmation
 
 Main:
-G    Enter exact address
-N    Next physical neighbor
-P    Previous physical neighbor
+J/K    Next/previous card in physical filing order
+G      Enter an exact address manually
+
+Index divider:
+H/L    Previous/next A–Z divider
+J/K    Select an overflow ListIndexCard
+Enter  Open the selected list card
++      Create a ListIndexCard after explicitly entering its overflow number
+*      Browse dedicated keyterm cards
+
+Index cards:
+J/K    Select an authored entry
+Enter  Read the printed pointer; never follows it
+A      Append an authored entry (text, target kind, literal)
+P      Promote the selected list entry to a dedicated keyterm card; original retained
+
+Dedicated keyterm cards:
+J/K    Select a keyterm card alphabetically
+L/Enter  Open the selected keyterm card
 
 Bibliography:
-↑/↓  Select a source
-Enter  Read source citation
-I    Import a local BibTeX file and review reconciliation
-C    Create a user-authored research BibCard for the selected source
-B/F  Read the BibCard back/Front
-A    Append a located, user-authored BibNote
+J/K    Select a source
+L/Enter  Read the selected source citation
+I      Import a local BibTeX file and review reconciliation
+C      Create a user-authored research BibCard for the selected source
+A      Append a located, user-authored BibNote
+H/L    Read the BibCard front/back
 Ctrl+E  In Main draft editor, enter a literal external reference
-
-Index:
-A–Z  Select divider
-Enter  Open selected ListIndexCard or read selected pointer
-↑/↓  Select overflow card or authored entry
-+    Create ListIndexCard after explicitly entering its overflow number
-*    Browse dedicated keyterm cards alphabetically
-A    Append an authored entry (text, target kind, literal)
-P    Promote selected list entry to a dedicated keyterm card; original retained
-Esc  Return to divider/keyterm list
 
 Editor:
 Ctrl+S  Save draft
 Ctrl+L  Insert literal card reference
 Ctrl+K  Insert literal Index keyterm reference
 Ctrl+E  Insert literal external bibliographic reference
+Arrows  Move the editor cursor
 Esc     Cancel dialog / return
 Enter   Confirm a literal prompt / insert a newline in the editor
-Arrows  Move the editor cursor or select a Desk/Main neighbor
-F       File the selected Desk draft at a manually entered address
+
+In the editor and text-entry prompts, h/j/k/l are ordinary authored text.

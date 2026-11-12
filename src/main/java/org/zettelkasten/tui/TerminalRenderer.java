@@ -26,7 +26,7 @@ public final class TerminalRenderer {
     }
     int width = size.getColumns() - 2;
     graphics.putString(1, 0, "ZETTELKASTEN — analog-first local slip-box");
-    graphics.putString(1, 1, "D Desk   M Main   I Index   B Bib   ? Help   Q Quit");
+    graphics.putString(1, 1, "J/K Select   H/L Move or back   L/Enter Open   ? Help   Q Quit");
     graphics.drawLine(0, 2, size.getColumns() - 1, 2, '─');
     List<String> body = wrap(controller.viewLines(), width, size.getRows() - 6);
     for (int row = 0; row < body.size(); row++) graphics.putString(1, row + 3, body.get(row));

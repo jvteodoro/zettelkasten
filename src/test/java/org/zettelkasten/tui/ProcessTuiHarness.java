@@ -110,7 +110,7 @@ public final class ProcessTuiHarness {
 
   private static List<KeyStroke> workflowKeys(Path bibFile) {
     List<KeyStroke> keys = new ArrayList<>();
-    addCharacters(keys, "dnÜberblick 漢字 e\u0301");
+    addCharacters(keys, "lnÜberblick 漢字 e\u0301");
     keys.add(control('e'));
     addCharacters(keys, "b.paperkey, p. 27");
     keys.add(key(KeyType.Enter));
@@ -129,7 +129,9 @@ public final class ProcessTuiHarness {
     keys.add(key(KeyType.Enter));
     keys.add(key(KeyType.Escape));
 
-    keys.add(character('i'));
+    keys.add(character('j'));
+    keys.add(character('j'));
+    keys.add(character('l'));
     keys.add(character('a'));
     keys.add(character('+'));
     addCharacters(keys, "1");
@@ -143,7 +145,8 @@ public final class ProcessTuiHarness {
     keys.add(key(KeyType.Escape));
     keys.add(key(KeyType.Escape));
 
-    keys.add(character('b'));
+    keys.add(character('j'));
+    keys.add(character('l'));
     keys.add(character('i'));
     addCharacters(keys, bibFile.toString());
     keys.add(key(KeyType.Enter));
@@ -198,7 +201,8 @@ public final class ProcessTuiHarness {
     if (cards.getInstalledInAddressOrder().size() != 1 || cards.getDrafts().size() != 2)
       throw new AssertionError("Reopen lost a filed card, rejected duplicate, or committed draft");
     var terminal = new DefaultVirtualTerminal(new TerminalSize(columns, rows));
-    terminal.addInput(character('m'));
+    terminal.addInput(character('j'));
+    terminal.addInput(character('l'));
     terminal.addInput(character('q'));
     var screen = new TerminalScreen(terminal);
     var index = new IndexService(database.unitOfWork(), Clock.systemUTC(), ids(9000));
