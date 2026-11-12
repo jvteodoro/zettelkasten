@@ -10,6 +10,7 @@ import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
 import com.googlecode.lanterna.screen.Screen;
 import java.lang.reflect.Proxy;
+import java.nio.file.Files;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -19,9 +20,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.zettelkasten.application.BibliographyService;
 import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
+import org.zettelkasten.domain.BibNote;
 import org.zettelkasten.domain.CardLinkRun;
+import org.zettelkasten.infrastructure.bibtex.JBibTeXFileParser;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
 
 class TuiControllerTest {
@@ -205,6 +209,115 @@ class TuiControllerTest {
                 .getFirst()
                 .promotedToKeytermCardId()
             != null);
+  }
+
+  @Test
+  void bibImportPreviewResearchNotesAndMainExRefRoundTripLiterally() throws Exception {
+    var database = database();
+    var mainCards = service(database);
+    var bibliography =
+        new BibliographyService(
+            database.unitOfWork(),
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            sequence(2_000),
+            new JBibTeXFileParser());
+    var controller = new TuiController(mainCards, null, bibliography, sequence(3_000));
+    var bibFile = temp.resolve("papers.bib");
+    Files.writeString(
+        bibFile,
+        "@article{paperkey, author={Müller, Ada}, title={Reading by Hand}, abstract={Imported abstract}}",
+        java.nio.charset.StandardCharsets.UTF_8);
+
+    controller.handle(character('b'));
+    controller.handle(character('i'));
+    type(controller, bibFile.toString());
+    controller.handle(key(KeyType.Enter));
+    type(controller, "local-papers");
+    controller.handle(key(KeyType.Enter));
+    assertEquals(TuiController.Screen.BIB_IMPORT_PREVIEW, controller.screen());
+    assertTrue(controller.viewLines().stream().anyMatch(line -> line.contains("NEW")));
+    assertTrue(
+        controller.viewLines().stream().anyMatch(line -> line.contains("no changes applied")));
+    assertTrue(bibliography.getSources().isEmpty());
+
+    controller.handle(character('a'));
+    assertTrue(controller.status().contains("applied atomically"));
+    assertEquals(1, bibliography.getSources().size());
+    var source = bibliography.getSources().getFirst();
+    assertTrue(bibliography.findBibCardForSource(source.id()).isEmpty());
+    controller.handle(key(KeyType.Escape));
+    controller.handle(key(KeyType.Enter));
+    assertEquals(TuiController.Screen.BIB_SOURCE, controller.screen());
+    assertTrue(
+        controller.viewLines().stream().anyMatch(line -> line.contains("Citation key: paperkey")));
+
+    controller.handle(character('c'));
+    type(controller, "Read for an argument");
+    controller.handle(key(KeyType.Enter));
+    type(controller, "The source overview is my authored summary.");
+    controller.handle(key(KeyType.Enter));
+    assertEquals(TuiController.Screen.BIB_CARD, controller.screen());
+    assertTrue(
+        controller.viewLines().stream()
+            .anyMatch(line -> line.contains("Reading goal: Read for an argument")));
+
+    controller.handle(character('b'));
+    controller.handle(character('a'));
+    controller.handle(character('p'));
+    type(controller, "27");
+    controller.handle(key(KeyType.Enter));
+    type(controller, "A brief authored observation.");
+    controller.handle(key(KeyType.Enter));
+    assertTrue(
+        controller.viewLines().stream()
+            .anyMatch(line -> line.contains("(27) A brief authored observation.")));
+    assertEquals(
+        BibNote.LocatorType.PAGE,
+        bibliography
+            .getBibNotes(bibliography.findBibCardForSource(source.id()).orElseThrow().id())
+            .getFirst()
+            .locatorType());
+
+    controller.handle(key(KeyType.Escape));
+    controller.handle(key(KeyType.Escape));
+    controller.handle(key(KeyType.Escape));
+    controller.handle(character('d'));
+    controller.handle(character('n'));
+    controller.handle(ctrl('e'));
+    type(controller, "b.paperkey, p. 27");
+    controller.handle(key(KeyType.Enter));
+    controller.handle(ctrl('s'));
+    controller.handle(key(KeyType.Escape));
+    controller.handle(character('f'));
+    type(controller, "3118/27");
+    controller.handle(key(KeyType.Enter));
+    controller.handle(key(KeyType.Escape));
+    controller.handle(character('m'));
+    assertTrue(controller.viewLines().contains("b.paperkey, p. 27"));
+
+    var reopened = SqliteDatabase.open(database.path());
+    var reopenedBibliography =
+        new BibliographyService(
+            reopened.unitOfWork(),
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            sequence(9_000),
+            new JBibTeXFileParser());
+    var retainedCard = reopenedBibliography.findBibCardForSource(source.id()).orElseThrow();
+    assertEquals(
+        "A brief authored observation.",
+        reopenedBibliography.getBibNotes(retainedCard.id()).getFirst().authoredText());
+    assertEquals(
+        "b.paperkey, p. 27",
+        reopened
+            .unitOfWork()
+            .transact(
+                tx ->
+                    tx.mainCards()
+                        .findInstalledInAddressOrder()
+                        .getFirst()
+                        .authoredBody()
+                        .getFirst()
+                        .literal()));
   }
 
   private SqliteDatabase database() {

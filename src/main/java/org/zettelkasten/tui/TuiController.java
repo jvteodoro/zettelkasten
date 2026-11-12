@@ -2,15 +2,24 @@ package org.zettelkasten.tui;
 
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.input.KeyType;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.zettelkasten.application.AddressConflictException;
+import org.zettelkasten.application.BibTeXImportResult;
+import org.zettelkasten.application.BibliographyService;
 import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 import org.zettelkasten.application.OrderedNeighbors;
+import org.zettelkasten.domain.BibCard;
+import org.zettelkasten.domain.BibNote;
+import org.zettelkasten.domain.BibliographicSource;
 import org.zettelkasten.domain.BodyRun;
 import org.zettelkasten.domain.IndexEntry;
 import org.zettelkasten.domain.KeytermIndexCard;
@@ -36,7 +45,11 @@ public final class TuiController {
     INDEX_LIST_CARD,
     KEYTERM_CARDS,
     KEYTERM_CARD,
-    INDEX_INPUT
+    INDEX_INPUT,
+    BIB_SOURCE,
+    BIB_CARD,
+    BIB_INPUT,
+    BIB_IMPORT_PREVIEW
   }
 
   private enum IndexInputStage {
@@ -46,9 +59,20 @@ public final class TuiController {
     ENTRY_TARGET
   }
 
+  private enum BibInputStage {
+    IMPORT_PATH,
+    IMPORT_NAMESPACE,
+    CARD_GOAL,
+    CARD_OVERVIEW,
+    NOTE_TYPE,
+    NOTE_LOCATOR,
+    NOTE_TEXT
+  }
+
   private final MainCardService cards;
   private final Supplier<UUID> ids;
   private final IndexService indexCards;
+  private final BibliographyService bibliography;
   private Screen screen = Screen.HOME;
   private List<MainCard> drafts = List.of();
   private List<MainCard> installed = List.of();
@@ -73,14 +97,41 @@ public final class TuiController {
   private Screen indexInputReturnScreen;
   private String indexAuthoredText;
   private char indexTargetKind;
+  private List<BibliographicSource> sources = List.of();
+  private int selectedSource;
+  private BibliographicSource currentSource;
+  private BibCard currentBibCard;
+  private List<BibNote> bibNotes = List.of();
+  private boolean showingBibBack;
+  private final StringBuilder bibInput = new StringBuilder();
+  private BibInputStage bibInputStage;
+  private Screen bibInputReturnScreen;
+  private String pendingBibText;
+  private String pendingBibSourceName;
+  private Path pendingBibPath;
+  private String pendingBibNamespace;
+  private String pendingReadingGoal;
+  private BibNote.LocatorType pendingLocatorType;
+  private String pendingLocator;
+  private BibTeXImportResult bibImportResult;
+  private boolean bibImportApplied;
 
   public TuiController(MainCardService cards, Supplier<UUID> ids) {
-    this(cards, null, ids);
+    this(cards, null, null, ids);
   }
 
   public TuiController(MainCardService cards, IndexService indexCards, Supplier<UUID> ids) {
+    this(cards, indexCards, null, ids);
+  }
+
+  public TuiController(
+      MainCardService cards,
+      IndexService indexCards,
+      BibliographyService bibliography,
+      Supplier<UUID> ids) {
     this.cards = Objects.requireNonNull(cards, "cards");
     this.indexCards = indexCards;
+    this.bibliography = bibliography;
     this.ids = Objects.requireNonNull(ids, "ids");
   }
 
@@ -110,12 +161,19 @@ public final class TuiController {
       handleIndexInput(key);
       return;
     }
+    if (screen == Screen.BIB_INPUT) {
+      handleBibInput(key);
+      return;
+    }
     if (key.getKeyType() == KeyType.Escape) {
       screen =
           switch (screen) {
             case INDEX_LIST_CARD -> Screen.INDEX;
             case KEYTERM_CARDS -> Screen.INDEX;
             case KEYTERM_CARD -> Screen.KEYTERM_CARDS;
+            case BIB_SOURCE -> Screen.BIB;
+            case BIB_CARD -> Screen.BIB_SOURCE;
+            case BIB_IMPORT_PREVIEW -> Screen.BIB;
             default -> Screen.HOME;
           };
       status = "";
@@ -132,7 +190,7 @@ public final class TuiController {
           case 'd' -> openDesk();
           case 'm' -> openMain();
           case 'i' -> openIndex();
-          case 'b' -> screen = Screen.BIB;
+          case 'b' -> openBibliography();
           case '?' -> screen = Screen.HELP;
           default -> {}
         }
@@ -161,6 +219,16 @@ public final class TuiController {
       } else if (screen == Screen.KEYTERM_CARDS) {
         if (value == 'u') moveKeyterm(-1);
         else if (value == 'n') moveKeyterm(1);
+      } else if (screen == Screen.BIB) {
+        if (value == 'i') beginBibInput(BibInputStage.IMPORT_PATH);
+      } else if (screen == Screen.BIB_SOURCE) {
+        if (value == 'c') beginBibInput(BibInputStage.CARD_GOAL);
+      } else if (screen == Screen.BIB_CARD) {
+        if (value == 'a') beginBibInput(BibInputStage.NOTE_TYPE);
+        else if (value == 'b') showingBibBack = true;
+        else if (value == 'f') showingBibBack = false;
+      } else if (screen == Screen.BIB_IMPORT_PREVIEW && value == 'a') {
+        applyBibImport();
       }
       return;
     }
@@ -198,6 +266,19 @@ public final class TuiController {
       moveIndexEntry(1);
     } else if (screen == Screen.KEYTERM_CARD && key.getKeyType() == KeyType.Enter) {
       showSelectedEntryPointer();
+    } else if (screen == Screen.BIB && key.getKeyType() == KeyType.ArrowUp) {
+      selectedSource = Math.max(0, selectedSource - 1);
+    } else if (screen == Screen.BIB && key.getKeyType() == KeyType.ArrowDown) {
+      selectedSource = Math.min(Math.max(0, sources.size() - 1), selectedSource + 1);
+    } else if (screen == Screen.BIB && key.getKeyType() == KeyType.Enter) {
+      openSelectedSource();
+    } else if (screen == Screen.BIB_SOURCE && key.getKeyType() == KeyType.Enter) {
+      openResearchCard();
+    } else if (screen == Screen.BIB_IMPORT_PREVIEW
+        && key.getKeyType() == KeyType.Character
+        && !key.isCtrlDown()
+        && Character.toLowerCase(key.getCharacter()) == 'a') {
+      applyBibImport();
     }
   }
 
@@ -325,9 +406,60 @@ public final class TuiController {
         lines.add("Enter Continue    Esc Cancel");
       }
       case BIB -> {
-        lines.add("Bibliography Box");
-        lines.add("Bibliographic sources and authored research notes.");
-        lines.add("Import and BibNote workflows are implemented in later project issues.");
+        lines.add("Bibliography Box — ↑/↓ Select source    Enter Read citation    I Import BibTeX");
+        if (sources.isEmpty()) lines.add("No bibliographic sources are filed.");
+        for (int index = 0; index < sources.size(); index++) {
+          BibliographicSource source = sources.get(index);
+          lines.add((index == selectedSource ? "> " : "  ") + citationLine(source));
+        }
+      }
+      case BIB_SOURCE -> {
+        lines.add("Bibliographic source — imported metadata is distinct from your research card.");
+        lines.add("Citation: " + currentSource.creatorsText() + " — " + currentSource.title());
+        if (currentSource.publicationYear() != null)
+          lines.add("Year: " + currentSource.publicationYear());
+        if (currentSource.containerTitle() != null)
+          lines.add("Container: " + currentSource.containerTitle());
+        lines.addAll(
+            bibliography.getExternalAliases(currentSource.id()).stream()
+                .map(alias -> "Citation key: " + alias.externalId())
+                .toList());
+        if (bibliography.findBibCardForSource(currentSource.id()).isPresent())
+          lines.add("Research BibCard exists. Enter to read it.");
+        else lines.add("No user-authored research BibCard yet. C Create goal and overview.");
+        lines.add("Esc Return to source list. Main ExRefs are entered literally with Ctrl+E.");
+      }
+      case BIB_CARD -> {
+        lines.add(
+            showingBibBack ? "Research BibCard — back / BibNotes" : "Research BibCard — front");
+        lines.add("Source: " + currentSource.creatorsText() + " — " + currentSource.title());
+        if (!showingBibBack) {
+          lines.add("Reading goal: " + currentBibCard.readingGoal());
+          lines.add("Source overview: " + currentBibCard.sourceOverview());
+          lines.add("B Read back/BibNotes    A Append a located BibNote");
+        } else {
+          if (bibNotes.isEmpty()) lines.add("No user-authored BibNotes.");
+          for (BibNote note : bibNotes)
+            lines.add("(" + note.locatorLiteral() + ") " + note.authoredText());
+          lines.add("F Read front    A Append a located BibNote");
+        }
+      }
+      case BIB_INPUT -> {
+        lines.add(bibInputPrompt());
+        lines.add(bibInput.toString());
+        lines.add("Enter Continue    Esc Cancel");
+      }
+      case BIB_IMPORT_PREVIEW -> {
+        lines.add(
+            bibImportApplied
+                ? "BibTeX reconciliation result"
+                : "BibTeX reconciliation preview — no changes applied");
+        lines.add("Source file: " + pendingBibSourceName + "    Namespace: " + pendingBibNamespace);
+        lines.add("Result: " + bibImportResult.status());
+        for (var entry : bibImportResult.entries())
+          lines.add(entry.citationKey() + " — " + entry.outcome() + ": " + entry.diagnostic());
+        if (!bibImportApplied) lines.add("A Apply the whole file    Esc Cancel");
+        else lines.add("Esc Return to Bibliography");
       }
       case HELP -> {
         lines.add("Keyboard help");
@@ -335,6 +467,8 @@ public final class TuiController {
         lines.add("Desk: N New draft, Enter Edit, F File at a manually chosen address");
         lines.add("Main: G exact address, N/P physical neighbors; printed links are not actions");
         lines.add("Index: A–Z divider; + overflow; * keyterms; A append entry; P promote");
+        lines.add(
+            "Bib: ↑/↓ source, Enter citation, I import with reconciliation, C research card, A note");
         lines.add("Editor: Ctrl+S Save, Ctrl+L card reference, Ctrl+K keyterm, Ctrl+E ExRef");
         lines.add(
             "Esc returns or cancels a literal prompt. No search, suggestions, or link following.");
@@ -360,6 +494,201 @@ public final class TuiController {
     }
     selectDivider(selectedDivider);
     screen = Screen.INDEX;
+  }
+
+  private void openBibliography() {
+    if (bibliography == null) {
+      screen = Screen.BIB;
+      status = "Bibliography workflows are unavailable in this session.";
+      return;
+    }
+    refreshSources();
+    screen = Screen.BIB;
+  }
+
+  private void refreshSources() {
+    sources = bibliography.getSources();
+    selectedSource = Math.max(0, Math.min(selectedSource, Math.max(0, sources.size() - 1)));
+  }
+
+  private void openSelectedSource() {
+    if (sources.isEmpty()) return;
+    currentSource = sources.get(selectedSource);
+    screen = Screen.BIB_SOURCE;
+  }
+
+  private void openResearchCard() {
+    var found = bibliography.findBibCardForSource(currentSource.id());
+    if (found.isEmpty()) {
+      status = "This source has no user-authored research BibCard. Press C to create one.";
+      return;
+    }
+    currentBibCard = found.get();
+    bibNotes = bibliography.getBibNotes(currentBibCard.id());
+    showingBibBack = false;
+    screen = Screen.BIB_CARD;
+  }
+
+  private static String citationLine(BibliographicSource source) {
+    String creators =
+        source.creatorsText().isBlank() ? "(creator not recorded)" : source.creatorsText();
+    String year = source.publicationYear() == null ? "" : " (" + source.publicationYear() + ")";
+    return creators
+        + year
+        + " — "
+        + (source.title().isBlank() ? "(untitled source)" : source.title());
+  }
+
+  private void beginBibInput(BibInputStage stage) {
+    if (bibliography == null) return;
+    bibInputStage = stage;
+    bibInputReturnScreen = screen;
+    bibInput.setLength(0);
+    screen = Screen.BIB_INPUT;
+  }
+
+  private String bibInputPrompt() {
+    return switch (bibInputStage) {
+      case IMPORT_PATH -> "Enter the path of a local .bib file to import.";
+      case IMPORT_NAMESPACE ->
+          "Enter a stable namespace for this source file; it scopes citation keys.";
+      case CARD_GOAL -> "Enter your reading goal for this source.";
+      case CARD_OVERVIEW -> "Enter your authored overview of the source.";
+      case NOTE_TYPE -> "Choose locator kind: P page, T time, S section, O other.";
+      case NOTE_LOCATOR -> "Enter the locator exactly as printed (for example xiv or 00:32:18).";
+      case NOTE_TEXT -> "Enter your brief, user-authored BibNote.";
+    };
+  }
+
+  private void handleBibInput(KeyStroke key) {
+    if (key.getKeyType() == KeyType.Escape) {
+      screen = bibInputReturnScreen;
+      return;
+    }
+    if (key.getKeyType() == KeyType.Backspace) {
+      if (!bibInput.isEmpty()) {
+        int codePoint = bibInput.codePointBefore(bibInput.length());
+        bibInput.delete(bibInput.length() - Character.charCount(codePoint), bibInput.length());
+      }
+      return;
+    }
+    if (key.getKeyType() == KeyType.Character
+        && !key.isCtrlDown()
+        && !key.isAltDown()
+        && !Character.isISOControl(key.getCharacter())) {
+      char value = key.getCharacter();
+      if (bibInputStage == BibInputStage.NOTE_TYPE) {
+        pendingLocatorType =
+            switch (Character.toUpperCase(value)) {
+              case 'P' -> BibNote.LocatorType.PAGE;
+              case 'T' -> BibNote.LocatorType.TIME;
+              case 'S' -> BibNote.LocatorType.SECTION;
+              case 'O' -> BibNote.LocatorType.OTHER;
+              default -> null;
+            };
+        if (pendingLocatorType == null) {
+          status = "Choose P, T, S, or O for the authored locator kind.";
+        } else {
+          bibInputStage = BibInputStage.NOTE_LOCATOR;
+          status = "";
+        }
+      } else {
+        bibInput.append(value);
+        status = "";
+      }
+      return;
+    }
+    if (key.getKeyType() != KeyType.Enter) return;
+    try {
+      switch (bibInputStage) {
+        case IMPORT_PATH -> readBibTeXFile();
+        case IMPORT_NAMESPACE -> {
+          pendingBibNamespace = requiredInput(bibInput.toString(), "Namespace");
+          bibImportResult =
+              bibliography.dryRunImport(pendingBibNamespace, pendingBibSourceName, pendingBibText);
+          bibImportApplied = false;
+          screen = Screen.BIB_IMPORT_PREVIEW;
+        }
+        case CARD_GOAL -> {
+          pendingReadingGoal = requiredInput(bibInput.toString(), "Reading goal");
+          bibInputStage = BibInputStage.CARD_OVERVIEW;
+          bibInput.setLength(0);
+        }
+        case CARD_OVERVIEW -> {
+          String overview = requiredInput(bibInput.toString(), "Source overview");
+          currentBibCard =
+              bibliography.createBibCard(currentSource.id(), pendingReadingGoal, overview);
+          bibNotes = List.of();
+          showingBibBack = false;
+          screen = Screen.BIB_CARD;
+          status = "User-authored research BibCard created.";
+        }
+        case NOTE_TYPE -> status = "Choose P, T, S, or O for the authored locator kind.";
+        case NOTE_LOCATOR -> {
+          pendingLocator = requiredInput(bibInput.toString(), "Locator");
+          bibInputStage = BibInputStage.NOTE_TEXT;
+          bibInput.setLength(0);
+        }
+        case NOTE_TEXT -> {
+          String text = requiredInput(bibInput.toString(), "BibNote text");
+          bibliography.addBibNote(currentBibCard.id(), pendingLocatorType, pendingLocator, text);
+          bibNotes = bibliography.getBibNotes(currentBibCard.id());
+          showingBibBack = true;
+          screen = Screen.BIB_CARD;
+          status = "BibNote appended.";
+        }
+      }
+    } catch (IOException | RuntimeException exception) {
+      status =
+          exception.getMessage() == null
+              ? "Bibliography operation could not be completed."
+              : exception.getMessage();
+    }
+  }
+
+  private void readBibTeXFile() throws IOException {
+    Path path = Path.of(requiredInput(bibInput.toString(), "BibTeX file path"));
+    if (!Files.isRegularFile(path))
+      throw new IllegalArgumentException("Path is not a regular file.");
+    if (Files.size(path) > 16L * 1024 * 1024)
+      throw new IllegalArgumentException("BibTeX file exceeds the 16 MiB import limit.");
+    byte[] content = Files.readAllBytes(path);
+    try {
+      pendingBibText =
+          StandardCharsets.UTF_8
+              .newDecoder()
+              .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+              .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+              .decode(java.nio.ByteBuffer.wrap(content))
+              .toString();
+    } catch (java.nio.charset.CharacterCodingException exception) {
+      throw new IllegalArgumentException("BibTeX file is not valid UTF-8.", exception);
+    }
+    pendingBibPath = path;
+    pendingBibSourceName = path.getFileName().toString();
+    bibInputStage = BibInputStage.IMPORT_NAMESPACE;
+    bibInput.setLength(0);
+  }
+
+  private void applyBibImport() {
+    if (bibImportApplied || bibImportResult == null) return;
+    try {
+      bibImportResult =
+          bibliography.applyImport(pendingBibNamespace, pendingBibSourceName, pendingBibText);
+      bibImportApplied = true;
+      refreshSources();
+      status =
+          bibImportResult.status() == BibTeXImportResult.Status.APPLIED
+              ? "BibTeX file applied atomically."
+              : "BibTeX file rejected; no new sources were committed. Review the diagnostics.";
+    } catch (RuntimeException exception) {
+      status = safeMessage(exception);
+    }
+  }
+
+  private static String requiredInput(String value, String label) {
+    if (value.isBlank()) throw new IllegalArgumentException(label + " cannot be empty.");
+    return value;
   }
 
   private void selectDivider(char divider) {

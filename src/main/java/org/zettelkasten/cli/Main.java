@@ -5,8 +5,10 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.UUID;
+import org.zettelkasten.application.BibliographyService;
 import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
+import org.zettelkasten.infrastructure.bibtex.JBibTeXFileParser;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
 import org.zettelkasten.tui.TuiApplication;
 
@@ -69,7 +71,13 @@ public final class Main {
           new MainCardService(database.unitOfWork(), java.time.Clock.systemUTC(), UUID::randomUUID);
       var indexCards =
           new IndexService(database.unitOfWork(), java.time.Clock.systemUTC(), UUID::randomUUID);
-      new TuiApplication(cards, indexCards, UUID::randomUUID).run();
+      var bibliography =
+          new BibliographyService(
+              database.unitOfWork(),
+              java.time.Clock.systemUTC(),
+              UUID::randomUUID,
+              new JBibTeXFileParser());
+      new TuiApplication(cards, indexCards, bibliography, UUID::randomUUID).run();
       return 0;
     } catch (IOException | RuntimeException exception) {
       err.println("Could not open terminal session: " + exception.getMessage());

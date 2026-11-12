@@ -148,11 +148,24 @@ final class SqliteBibliographyRepository implements BibliographyRepository {
   }
 
   @Override
+  public Optional<BibCard> findBibCardForSource(UUID sourceId) {
+    try (PreparedStatement query =
+        connection.prepareStatement("SELECT card_id FROM bibcards WHERE source_id=?")) {
+      query.setString(1, sourceId.toString());
+      try (ResultSet row = query.executeQuery()) {
+        return row.next() ? findBibCard(UUID.fromString(row.getString(1))) : Optional.empty();
+      }
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not find research card for source", exception);
+    }
+  }
+
+  @Override
   public List<BibliographicSource> findSources() {
     List<UUID> ids = new ArrayList<>();
     try (PreparedStatement query =
             connection.prepareStatement(
-                "SELECT id FROM bibliographic_sources ORDER BY title COLLATE NOCASE,id");
+                "SELECT id FROM bibliographic_sources ORDER BY creators_text COLLATE NOCASE,title COLLATE NOCASE,id");
         ResultSet rows = query.executeQuery()) {
       while (rows.next()) ids.add(UUID.fromString(rows.getString(1)));
       return ids.stream().map(this::findSource).flatMap(Optional::stream).toList();
@@ -191,6 +204,30 @@ final class SqliteBibliographyRepository implements BibliographyRepository {
       }
     } catch (SQLException exception) {
       throw new PersistenceException("Could not resolve source external identity", exception);
+    }
+  }
+
+  @Override
+  public List<SourceExternalId> findExternalIds(UUID sourceId) {
+    try (PreparedStatement query =
+        connection.prepareStatement(
+            "SELECT id,source_id,provider,scope,external_id FROM source_external_ids WHERE source_id=? ORDER BY provider,scope,external_id")) {
+      query.setString(1, sourceId.toString());
+      try (ResultSet rows = query.executeQuery()) {
+        List<SourceExternalId> identities = new ArrayList<>();
+        while (rows.next()) {
+          identities.add(
+              new SourceExternalId(
+                  UUID.fromString(rows.getString(1)),
+                  UUID.fromString(rows.getString(2)),
+                  rows.getString(3),
+                  rows.getString(4),
+                  rows.getString(5)));
+        }
+        return List.copyOf(identities);
+      }
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not list source citation aliases", exception);
     }
   }
 

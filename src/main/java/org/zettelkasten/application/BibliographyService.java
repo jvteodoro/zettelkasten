@@ -97,6 +97,21 @@ public final class BibliographyService {
     return unitOfWork.transact(tx -> tx.bibliography().findSources());
   }
 
+  public BibliographicSource getSource(UUID sourceId) {
+    return unitOfWork
+        .transact(tx -> tx.bibliography().findSource(sourceId))
+        .orElseThrow(
+            () -> new IllegalArgumentException("Bibliographic source does not exist: " + sourceId));
+  }
+
+  public java.util.Optional<BibCard> findBibCardForSource(UUID sourceId) {
+    return unitOfWork.transact(tx -> tx.bibliography().findBibCardForSource(sourceId));
+  }
+
+  public List<SourceExternalId> getExternalAliases(UUID sourceId) {
+    return unitOfWork.transact(tx -> tx.bibliography().findExternalIds(sourceId));
+  }
+
   public List<BibNote> getBibNotes(UUID bibCardId) {
     return unitOfWork.transact(tx -> tx.bibliography().findBibNotes(bibCardId));
   }

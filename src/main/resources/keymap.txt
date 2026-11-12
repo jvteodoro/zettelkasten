@@ -11,6 +11,15 @@ G    Enter exact address
 N    Next physical neighbor
 P    Previous physical neighbor
 
+Bibliography:
+↑/↓  Select a source
+Enter  Read source citation
+I    Import a local BibTeX file and review reconciliation
+C    Create a user-authored research BibCard for the selected source
+B/F  Read the BibCard back/Front
+A    Append a located, user-authored BibNote
+Ctrl+E  In Main draft editor, enter a literal external reference
+
 Index:
 A–Z  Select divider
 Enter  Open selected ListIndexCard or read selected pointer

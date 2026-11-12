@@ -64,8 +64,9 @@ filing. The install prompt shows the immediate physical neighbor addresses aroun
 a fully parsed proposed address, without selecting or filling the address. Exact
 Main lookups report a missing address without offering alternatives.
 `open --db FILE` opens an existing SQLite archive; it does not initialize
-one. Bib has a navigable informational screen while its workflows arrive in
-later issues. The exact bindings are maintained in
+one. Bib sources are browsed separately from their research BibCards; local
+BibTeX files require a typed namespace, a reconciliation preview, and an
+explicit apply action. The exact bindings are maintained in
 `src/main/resources/keymap.txt` and shown by the `?` help screen. The editor uses
 an 825-codepoint configurable soft limit, warns beginning 25 codepoints early,
 and never truncates. Ctrl+L/K/E are literal prompts; lower-case `l` remains text.
@@ -78,3 +79,12 @@ the original. Entries and targets are printed text; Enter reports the literal
 pointer and never opens Main. To follow an address manually, go to Main and use
 `G` to type the exact address. No inverted index, suggestions, or clickable
 references are available.
+
+The Bib screen orders sources by creator and title. Opening a source shows
+imported citation metadata and its scoped citation keys. A separate research
+BibCard holds the user's reading goal and overview on its front and ordered
+BibNotes on its back. Notes require an explicit locator kind, exact locator
+text, and authored observation. Import preview classifies every record before
+apply; rejected files commit no new sources. Ctrl+E in the Main draft editor
+accepts a literal such as `b.paperkey, p. 27` and renders that same text. It
+does not suggest source keys or navigate to a source.

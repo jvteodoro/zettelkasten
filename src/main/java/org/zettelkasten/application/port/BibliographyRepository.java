@@ -19,11 +19,15 @@ public interface BibliographyRepository {
 
   Optional<BibCard> findBibCard(UUID cardId);
 
+  Optional<BibCard> findBibCardForSource(UUID sourceId);
+
   List<BibliographicSource> findSources();
 
   List<BibliographicSource> findSourcesByDoi(String doi);
 
   Optional<UUID> findSourceIdByExternalId(String provider, String scope, String externalId);
+
+  List<SourceExternalId> findExternalIds(UUID sourceId);
 
   void insertSourceExternalId(SourceExternalId externalId);
 

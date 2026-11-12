@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.zettelkasten.application.BibliographyService;
 import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 
@@ -20,6 +21,14 @@ public final class TuiApplication {
 
   public TuiApplication(MainCardService cards, IndexService indexCards, Supplier<UUID> ids) {
     this(new TuiController(cards, indexCards, ids), new TerminalRenderer());
+  }
+
+  public TuiApplication(
+      MainCardService cards,
+      IndexService indexCards,
+      BibliographyService bibliography,
+      Supplier<UUID> ids) {
+    this(new TuiController(cards, indexCards, bibliography, ids), new TerminalRenderer());
   }
 
   TuiApplication(TuiController controller, TerminalRenderer renderer) {

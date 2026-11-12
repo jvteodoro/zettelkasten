@@ -50,6 +50,12 @@ The parser dependency is isolated behind an infrastructure adapter. ADR
 0006-bibtex-parser records the selected version, license, maintenance caveat, and
 replacement path.
 
+The TUI keeps the imported source citation separate from the research BibCard.
+Reading goals and overviews are authored on the card front; ordered BibNotes use
+the literal page, time, section, or other locator on its back. A Maincard ExRef
+is typed explicitly in the editor and retained as entered, for example
+`b.NakladovaJohann, 199`; it never becomes a click action or generated note.
+
 ## Zotero seam
 
 Port \`BibliographyProvider\`: \`listSources\`, \`fetchSource(externalKey)\`, \`importBatch\`; import ID always scoped. A \`ZoteroLocalProvider\` can later use the *official local API*, explicitly opted-in and only when Zotero is available; no direct access to Zotero's SQLite database, no automatic cloud calls, no requirement for Zotero to use the Antinet.
