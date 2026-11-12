@@ -19,6 +19,7 @@ import org.zettelkasten.application.BibliographyService;
 import org.zettelkasten.application.IndexService;
 import org.zettelkasten.application.MainCardService;
 import org.zettelkasten.domain.ExRefRun;
+import org.zettelkasten.domain.ReferenceKind;
 import org.zettelkasten.infrastructure.bibtex.JBibTeXFileParser;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
 
@@ -73,6 +74,15 @@ public final class ProcessTuiHarness {
     var sources = bibService.getSources();
     var bibCard = bibService.findBibCardForSource(sources.getFirst().id()).orElseThrow();
     var notes = bibService.getBibNotes(bibCard.id());
+    var externalReference =
+        reopened
+            .unitOfWork()
+            .transact(
+                tx ->
+                    tx.references().findBySourceCard(installed.getFirst().id()).stream()
+                        .filter(reference -> reference.kind() == ReferenceKind.BIBLIOGRAPHIC_SOURCE)
+                        .findFirst()
+                        .orElseThrow());
     var indexService = new IndexService(reopened.unitOfWork(), Clock.systemUTC(), ids(5000));
     boolean exRefRetained =
         installed.getFirst().authoredBody().stream()
@@ -86,6 +96,9 @@ public final class ProcessTuiHarness {
         || sources.size() != 1
         || notes.size() != 1
         || !notes.getFirst().authoredText().equals("A process-authored observation.")
+        || !externalReference.targetSourceId().equals(sources.getFirst().id())
+        || !externalReference.targetLiteral().equals("b.paperkey, p. 27")
+        || !externalReference.status().name().equals("RESOLVED")
         || indexService.getListCards('A').size() != 1
         || indexService.getEntries(indexService.getListCards('A').getFirst().id()).size() != 1
         || !exRefRetained

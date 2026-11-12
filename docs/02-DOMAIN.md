@@ -75,6 +75,7 @@ Index and Bib cards use their own lifecycle/ordering rules; do not force a Main 
 - Link insertion stores the *exact user-authored literal* and a typed run; no preview, suggestions or navigation action.
 - Each typed card, keyterm and external-reference run also has a normalized reference projection keyed to that run. Repeated occurrences stay separate; draft edits replace only the editable draft projection, while annotations append new projections.
 - Link target existence is not required; when resolvable, store resolved stable ID; when not, PENDING. If a referenced card is installed later, a maintenance resolver may update the resolution projection, without changing the original source literal.
+- A typed keyterm literal resolves only to one exact dedicated Index keyterm; duplicate exact terms are AMBIGUOUS. A bibliographic literal of the form `b.<citation-key>, <locator>` resolves against scoped BibTeX aliases only when it identifies one source UUID across the archive; multiple matching source UUIDs are AMBIGUOUS. The complete authored literal, including locator, remains unchanged.
 - Address references are rechecked as drafts are saved and cards are installed. Resolution changes and reference rows commit with the corresponding card operation; migration V004 backfills typed runs from older archives and records a backfill event for each occurrence.
 - IDs never reused. A BibTeX entry with same citation key is **not** automatically treated as same publication without evidence.
 

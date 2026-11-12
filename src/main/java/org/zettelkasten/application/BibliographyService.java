@@ -29,6 +29,7 @@ public final class BibliographyService {
   private final Clock clock;
   private final Supplier<UUID> ids;
   private final BibTeXFileParser parser;
+  private final AuthoredReferenceService authoredReferences;
 
   public BibliographyService(
       UnitOfWork unitOfWork, Clock clock, Supplier<UUID> ids, BibTeXFileParser parser) {
@@ -36,6 +37,7 @@ public final class BibliographyService {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.ids = Objects.requireNonNull(ids, "ids");
     this.parser = Objects.requireNonNull(parser, "parser");
+    this.authoredReferences = new AuthoredReferenceService(clock);
   }
 
   public BibliographicSource createSource(BibliographicSource source) {
@@ -55,6 +57,7 @@ public final class BibliographyService {
           if (tx.bibliography().findSource(sourceId).isEmpty())
             throw new IllegalArgumentException("Bibliographic source does not exist: " + sourceId);
           tx.bibliography().insertSourceExternalId(alias);
+          authoredReferences.resolvePending(tx);
           return null;
         });
   }
@@ -201,6 +204,7 @@ public final class BibliographyService {
                       planned.diagnostic()));
             }
           }
+          if (!rejected) authoredReferences.resolvePending(tx);
           return new BibTeXImportResult(
               batchId,
               rejected ? BibTeXImportResult.Status.REJECTED : BibTeXImportResult.Status.APPLIED,

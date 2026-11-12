@@ -2,6 +2,7 @@ package org.zettelkasten.application;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -18,9 +19,11 @@ import org.zettelkasten.domain.CardAnnotation;
 import org.zettelkasten.domain.CardLinkRun;
 import org.zettelkasten.domain.CardState;
 import org.zettelkasten.domain.ExRefRun;
+import org.zettelkasten.domain.KeytermIndexCard;
 import org.zettelkasten.domain.KeytermLinkRun;
 import org.zettelkasten.domain.MainCard;
 import org.zettelkasten.domain.TextRun;
+import org.zettelkasten.infrastructure.bibtex.JBibTeXFileParser;
 import org.zettelkasten.infrastructure.sqlite.SqliteDatabase;
 
 class MainCardServiceTest {
@@ -144,11 +147,12 @@ class MainCardServiceTest {
                 new CardLinkRun(uuid(505), "~/1/1a"),
                 new CardLinkRun(uuid(506), "9000/1"),
                 new KeytermLinkRun(uuid(507), "Argument"),
-                new ExRefRun(uuid(508), "b.paper, p. 27")));
+                new ExRefRun(uuid(508), "b.paper, p. 27"),
+                new ExRefRun(uuid(516), "r.Zetteldan.1")));
 
     var pending =
         database.unitOfWork().transact(tx -> tx.references().findBySourceCard(source.id()));
-    assertEquals(6, pending.size());
+    assertEquals(7, pending.size());
     assertTrue(pending.stream().allMatch(reference -> reference.status().name().equals("PENDING")));
     assertEquals(
         2, pending.stream().filter(reference -> reference.targetLiteral().equals("/1")).count());
@@ -170,6 +174,30 @@ class MainCardServiceTest {
         database.unitOfWork().transact(tx -> tx.references().findBySourceCard(source.id()));
     assertEquals(laterTarget.id(), afterLateTarget.get(3).targetCardId());
     assertEquals("RESOLVED", afterLateTarget.get(3).status().name());
+
+    var indexService =
+        new IndexService(database.unitOfWork(), Clock.fixed(NOW, ZoneOffset.UTC), () -> uuid(520));
+    KeytermIndexCard term = indexService.createKeytermCard("Argument");
+    var afterIndexTarget =
+        database.unitOfWork().transact(tx -> tx.references().findBySourceCard(source.id()));
+    assertEquals(term.id(), afterIndexTarget.get(4).targetIndexId());
+    assertEquals("RESOLVED", afterIndexTarget.get(4).status().name());
+
+    var bibliography =
+        new BibliographyService(
+            database.unitOfWork(),
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            ids(530),
+            new JBibTeXFileParser());
+    var imported = bibliography.applyImport("library", "sources.bib", "@book{paper,title={Paper}}");
+    var afterSourceTarget =
+        database.unitOfWork().transact(tx -> tx.references().findBySourceCard(source.id()));
+    assertEquals(
+        imported.entries().getFirst().sourceId(), afterSourceTarget.get(5).targetSourceId());
+    assertEquals("b.paper, p. 27", afterSourceTarget.get(5).targetLiteral());
+    assertEquals("RESOLVED", afterSourceTarget.get(5).status().name());
+    assertEquals("PENDING", afterSourceTarget.get(6).status().name());
+    assertEquals("r.Zetteldan.1", afterSourceTarget.get(6).targetLiteral());
     long resolutionEvents =
         database
             .unitOfWork()
@@ -179,7 +207,37 @@ class MainCardServiceTest {
                         .filter(event -> event.aggregateId().equals(source.id()))
                         .filter(event -> event.eventType().equals("ReferenceResolutionChanged"))
                         .count());
-    assertEquals(4L, resolutionEvents);
+    assertEquals(6L, resolutionEvents);
+  }
+
+  @Test
+  void typedReferencesBecomeAmbiguousWhenLiteralMatchesMultipleManualTargets() {
+    var database = database("ambiguous-references.db");
+    var index = new IndexService(database.unitOfWork(), Clock.fixed(NOW, ZoneOffset.UTC), ids(540));
+    index.createKeytermCard("Argument");
+    index.createKeytermCard("Argument");
+    var bibliography =
+        new BibliographyService(
+            database.unitOfWork(),
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            ids(550),
+            new JBibTeXFileParser());
+    bibliography.applyImport("library-a", "a.bib", "@book{paper,title={One}}");
+    bibliography.applyImport("library-b", "b.bib", "@book{paper,title={Two}}");
+
+    MainCard source =
+        service(database)
+            .createDraft(
+                List.of(
+                    new KeytermLinkRun(uuid(551), "Argument"),
+                    new ExRefRun(uuid(552), "b.paper, p. 27")));
+    var references =
+        database.unitOfWork().transact(tx -> tx.references().findBySourceCard(source.id()));
+
+    assertEquals("AMBIGUOUS", references.get(0).status().name());
+    assertEquals("AMBIGUOUS", references.get(1).status().name());
+    assertNull(references.get(0).targetIndexId());
+    assertNull(references.get(1).targetSourceId());
   }
 
   @Test
@@ -239,6 +297,11 @@ class MainCardServiceTest {
 
   private static int eventCount(SqliteDatabase database) {
     return database.unitOfWork().transact(tx -> tx.events().findAfter(0, 100).size());
+  }
+
+  private static java.util.function.Supplier<UUID> ids(long start) {
+    AtomicLong generated = new AtomicLong(start);
+    return () -> uuid(generated.incrementAndGet());
   }
 
   private static UUID uuid(long value) {

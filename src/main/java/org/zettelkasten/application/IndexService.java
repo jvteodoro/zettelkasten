@@ -21,11 +21,13 @@ public final class IndexService {
   private final UnitOfWork unitOfWork;
   private final Clock clock;
   private final Supplier<UUID> ids;
+  private final AuthoredReferenceService authoredReferences;
 
   public IndexService(UnitOfWork unitOfWork, Clock clock, Supplier<UUID> ids) {
     this.unitOfWork = Objects.requireNonNull(unitOfWork, "unitOfWork");
     this.clock = Objects.requireNonNull(clock, "clock");
     this.ids = Objects.requireNonNull(ids, "ids");
+    this.authoredReferences = new AuthoredReferenceService(clock);
   }
 
   public static List<Character> dividers() {
@@ -49,6 +51,7 @@ public final class IndexService {
     unitOfWork.transact(
         tx -> {
           tx.indexCards().insertKeytermCard(card);
+          authoredReferences.resolvePending(tx);
           return null;
         });
     return card;
@@ -105,6 +108,7 @@ public final class IndexService {
                   null);
           IndexEntry persistedCopy = tx.indexCards().appendEntry(copied);
           tx.indexCards().recordPromotion(source, persistedCopy, card, promotedAt);
+          authoredReferences.resolvePending(tx);
           return card;
         });
   }

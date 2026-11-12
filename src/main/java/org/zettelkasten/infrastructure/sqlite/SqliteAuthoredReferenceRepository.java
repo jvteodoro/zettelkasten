@@ -105,8 +105,10 @@ final class SqliteAuthoredReferenceRepository implements AuthoredReferenceReposi
   @Override
   public void updateResolution(AuthoredReference reference) {
     Objects.requireNonNull(reference, "reference");
-    if (reference.status() != ResolutionStatus.RESOLVED)
-      throw new IllegalArgumentException("Resolution updates must identify a resolved target");
+    if (reference.status() != ResolutionStatus.RESOLVED
+        && reference.status() != ResolutionStatus.AMBIGUOUS)
+      throw new IllegalArgumentException(
+          "Resolution updates must resolve or disambiguate a target");
     String sql =
         "UPDATE refs SET target_card_id=?,target_source_id=?,target_index_id=?,status=? "
             + "WHERE id=? AND status='PENDING'";
@@ -124,7 +126,9 @@ final class SqliteAuthoredReferenceRepository implements AuthoredReferenceReposi
           reference.sourceCardId(),
           "{\"referenceId\":\""
               + reference.id()
-              + "\",\"status\":\"RESOLVED\",\"targetCardId\":"
+              + "\",\"status\":\""
+              + reference.status().name()
+              + "\",\"targetCardId\":"
               + nullableJson(reference.targetCardId())
               + ",\"targetSourceId\":"
               + nullableJson(reference.targetSourceId())

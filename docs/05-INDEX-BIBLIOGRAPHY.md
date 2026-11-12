@@ -23,6 +23,8 @@ Index does not auto-link every occurrence, tag cards, suggest synonym, or offer 
 - Research fields are user-owned and never overwritten by source sync: readingGoal, sourceOverview, BibNotes, local annotations, manually authored ExRefs.
 - BibNote: own UUID, source/BibCard ID, locator type (page/time/section/other), literal locator (e.g. \`xiv\`, \`12-15\`, \`00:32:18\`), short author text, createdAt, source ordering, optional derived maincard ID.
 - Internal ExRefs must be able to refer to sources with raw literal like \`b.NakladovaJohann, 199\` or \`r.Zetteldan.1\` plus a normalized source ID and locator. See book pp. 239–242.
+- The storage-only reference resolver recognizes \`b.<citation-key>[, locator]\` by exact key against imported BibTeX aliases. It resolves only when all matching scoped aliases identify one source UUID; conflicting source identities remain AMBIGUOUS. Other literal formats, including \`r.\` references, remain preserved and PENDING until an explicit identity mapping exists.
+- See [ADR 0009](adr/0009-authored-reference-resolution.md) for the exact matching and ambiguity policy.
 
 ## BibTeX adapter
 
