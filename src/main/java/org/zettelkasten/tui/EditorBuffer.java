@@ -18,6 +18,7 @@ public final class EditorBuffer {
   public enum Mode {
     TEXT,
     NORMAL,
+    COMMAND,
     CARD_REFERENCE,
     INDEX_LITERAL,
     EXTERNAL_REFERENCE
@@ -26,6 +27,7 @@ public final class EditorBuffer {
   public enum Action {
     NONE,
     SAVE,
+    SAVE_AND_EXIT,
     EXIT
   }
 
@@ -65,6 +67,12 @@ public final class EditorBuffer {
         validationMessage = "";
         return Action.NONE;
       }
+      if (mode == Mode.COMMAND) {
+        mode = Mode.NORMAL;
+        prompt.setLength(0);
+        validationMessage = "";
+        return Action.NONE;
+      }
       if (mode == Mode.TEXT) {
         mode = Mode.NORMAL;
         return Action.NONE;
@@ -72,15 +80,8 @@ public final class EditorBuffer {
       return Action.EXIT;
     }
     if (isPromptMode()) return handlePrompt(key);
+    if (mode == Mode.COMMAND) return handleCommand(key);
     if (mode == Mode.NORMAL) return handleNormalMode(key);
-    if (key.getKeyType() == KeyType.Character && key.isCtrlDown()) {
-      char chord = Character.toLowerCase(key.getCharacter());
-      if (chord == 's') return Action.SAVE;
-      if (chord == 'l') return openPrompt(Mode.CARD_REFERENCE);
-      if (chord == 'k') return openPrompt(Mode.INDEX_LITERAL);
-      if (chord == 'e') return openPrompt(Mode.EXTERNAL_REFERENCE);
-      return Action.NONE;
-    }
     if (key.getKeyType() == KeyType.Character && !key.isCtrlDown() && !key.isAltDown()) {
       insertCharacter(key.getCharacter());
     } else if (key.getKeyType() == KeyType.Enter) {
@@ -111,6 +112,7 @@ public final class EditorBuffer {
     return switch (mode) {
       case TEXT -> "";
       case NORMAL -> "";
+      case COMMAND -> ":";
       case CARD_REFERENCE -> "Card address literal (full, /stem, or ~/branch): ";
       case INDEX_LITERAL -> "Index keyterm literal: ";
       case EXTERNAL_REFERENCE -> "External reference literal: ";
@@ -123,6 +125,10 @@ public final class EditorBuffer {
 
   public boolean dirty() {
     return dirty;
+  }
+
+  public void markSaved() {
+    dirty = false;
   }
 
   public int codePointCount() {
@@ -172,14 +178,12 @@ public final class EditorBuffer {
         case 'j' -> moveVertical(1);
         case 'k' -> moveVertical(-1);
         case 'l' -> moveRight();
+        case 'r' -> openPrompt(Mode.CARD_REFERENCE);
+        case 't' -> openPrompt(Mode.INDEX_LITERAL);
+        case 'e' -> openPrompt(Mode.EXTERNAL_REFERENCE);
+        case ':' -> openCommand();
         default -> {}
       }
-    } else if (key.getKeyType() == KeyType.Character && key.isCtrlDown()) {
-      char chord = Character.toLowerCase(key.getCharacter());
-      if (chord == 's') return Action.SAVE;
-      if (chord == 'l') return openPrompt(Mode.CARD_REFERENCE);
-      if (chord == 'k') return openPrompt(Mode.INDEX_LITERAL);
-      if (chord == 'e') return openPrompt(Mode.EXTERNAL_REFERENCE);
     } else if (key.getKeyType() == KeyType.ArrowLeft) {
       moveLeft();
     } else if (key.getKeyType() == KeyType.ArrowRight) {
@@ -190,6 +194,42 @@ public final class EditorBuffer {
       moveVertical(1);
     }
     return Action.NONE;
+  }
+
+  private void openCommand() {
+    prompt.setLength(0);
+    validationMessage = "";
+    mode = Mode.COMMAND;
+  }
+
+  private Action handleCommand(KeyStroke key) {
+    if (key.getKeyType() == KeyType.Enter) {
+      String command = prompt.toString().trim().toLowerCase(java.util.Locale.ROOT);
+      if (command.equals("w")) return finishCommand(Action.SAVE);
+      if (command.equals("q")) return finishCommand(Action.EXIT);
+      if (command.equals("wq")) return finishCommand(Action.SAVE_AND_EXIT);
+      validationMessage = "Unknown command. Use :w, :q, or :wq.";
+    } else if (key.getKeyType() == KeyType.Backspace) {
+      if (!prompt.isEmpty()) {
+        int codePoint = prompt.codePointBefore(prompt.length());
+        prompt.delete(prompt.length() - Character.charCount(codePoint), prompt.length());
+      }
+      validationMessage = "";
+    } else if (key.getKeyType() == KeyType.Character
+        && !key.isCtrlDown()
+        && !key.isAltDown()
+        && !Character.isISOControl(key.getCharacter())) {
+      prompt.append(key.getCharacter());
+      validationMessage = "";
+    }
+    return Action.NONE;
+  }
+
+  private Action finishCommand(Action action) {
+    mode = Mode.NORMAL;
+    prompt.setLength(0);
+    validationMessage = "";
+    return action;
   }
 
   private boolean isPromptMode() {
@@ -207,7 +247,7 @@ public final class EditorBuffer {
               case CARD_REFERENCE -> new CardLinkRun(ids.get(), prompt.toString());
               case INDEX_LITERAL -> new KeytermLinkRun(ids.get(), prompt.toString());
               case EXTERNAL_REFERENCE -> new ExRefRun(ids.get(), prompt.toString());
-              case TEXT, NORMAL -> throw new IllegalStateException("Not a prompt mode");
+              case TEXT, NORMAL, COMMAND -> throw new IllegalStateException("Not a prompt mode");
             };
         insertRunAtCursor(run);
         mode = promptReturnMode;

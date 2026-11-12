@@ -49,24 +49,24 @@ I      Import a local BibTeX file and review reconciliation
 C      Create a user-authored research BibCard for the selected source
 A      Append a located, user-authored BibNote
 H/L    Read the BibCard front/back
-Ctrl+E  In Main draft editor, enter a literal external reference
+E      In the Main editor's NORMAL mode, enter a literal external reference
 
 Editor:
 INSERT MODE:
 Esc     Return to NORMAL mode; text is unchanged
-Ctrl+S  Save draft
-Ctrl+L  Insert literal card reference
-Ctrl+K  Insert literal Index keyterm reference
-Ctrl+E  Insert literal external bibliographic reference
 Enter   Insert a newline
 
 NORMAL MODE:
 H/J/K/L Move the editor cursor
 I       Return to INSERT mode
-Ctrl+S  Save draft
-Ctrl+L  Insert literal card reference
-Ctrl+K  Insert literal Index keyterm reference
-Ctrl+E  Insert literal external bibliographic reference
+R       Insert literal card reference
+T       Insert literal Index keyterm reference
+E       Insert literal external bibliographic reference
+:
+        Begin a Vim-style command
+:w      Save draft
+:q      Return to Desk; unsaved changes require confirmation
+:wq     Save draft and return to Desk
 Esc     Return to the Desk (a second Esc after leaving INSERT mode)
 
 LITERAL PROMPTS:

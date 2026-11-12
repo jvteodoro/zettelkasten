@@ -16,12 +16,14 @@ import org.zettelkasten.domain.KeytermLinkRun;
 
 class EditorBufferTest {
   @Test
-  void lowercaseLIsTextAndCtrlLPromptsForAnAuthoredLiteralWithoutSuggestions() {
+  void insertModeKeepsLowercaseLAsTextAndNormalRPromptsForAnAuthoredLiteral() {
     var editor = editor();
     assertEquals(825, editor.softLimit());
     editor.handle(character('l'));
     assertEquals("l", editor.renderedText());
-    assertEquals(EditorBuffer.Action.NONE, editor.handle(ctrl('l')));
+    editor.handle(key(KeyType.Escape));
+    assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
+    assertEquals(EditorBuffer.Action.NONE, editor.handle(character('r')));
     assertEquals(EditorBuffer.Mode.CARD_REFERENCE, editor.mode());
     assertEquals("", editor.promptText());
     type(editor, "~/1/1a");
@@ -32,15 +34,16 @@ class EditorBufferTest {
   }
 
   @Test
-  void modalShortcutsInsertIndexAndExternalReferenceRunsAndEscapeCancelsCleanly() {
+  void normalModeCommandsInsertTypedRunsAndEscapeCancelsPrompts() {
     var editor = editor();
-    editor.handle(ctrl('k'));
+    editor.handle(key(KeyType.Escape));
+    editor.handle(character('t'));
     type(editor, "Überblick");
     editor.handle(key(KeyType.Enter));
-    editor.handle(ctrl('e'));
+    editor.handle(character('e'));
     type(editor, "b.Source, xiv");
     editor.handle(key(KeyType.Enter));
-    editor.handle(ctrl('l'));
+    editor.handle(character('r'));
     type(editor, "bad");
     assertEquals(EditorBuffer.Action.NONE, editor.handle(key(KeyType.Escape)));
 
@@ -48,13 +51,14 @@ class EditorBufferTest {
     assertTrue(editor.runs().get(0) instanceof KeytermLinkRun);
     assertTrue(editor.runs().get(1) instanceof ExRefRun);
     assertEquals("Überblickb.Source, xiv", editor.renderedText());
-    assertEquals(EditorBuffer.Mode.TEXT, editor.mode());
+    assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
   }
 
   @Test
   void emptyLiteralPromptCannotCreateAnEmptyTypedRun() {
     var editor = editor();
-    editor.handle(ctrl('k'));
+    editor.handle(key(KeyType.Escape));
+    editor.handle(character('t'));
     editor.handle(key(KeyType.Enter));
     assertEquals(EditorBuffer.Mode.INDEX_LITERAL, editor.mode());
     assertTrue(editor.runs().isEmpty());
@@ -83,13 +87,18 @@ class EditorBufferTest {
   void saveIsAnExplicitActionAndCursorInsertionPreservesTypedRuns() {
     var editor = editor();
     type(editor, "ab");
-    editor.handle(ctrl('l'));
+    editor.handle(key(KeyType.Escape));
+    editor.handle(character('r'));
     type(editor, "2/1");
     editor.handle(key(KeyType.Enter));
-    editor.handle(key(KeyType.ArrowLeft));
+    assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
+    editor.handle(character('h'));
+    editor.handle(character('i'));
     editor.handle(character('l'));
+    editor.handle(key(KeyType.Escape));
+    type(editor, ":w");
+    assertEquals(EditorBuffer.Action.SAVE, editor.handle(key(KeyType.Enter)));
     assertEquals("abl2/1", editor.renderedText());
-    assertTrue(editor.handle(ctrl('s')) == EditorBuffer.Action.SAVE);
     assertFalse(editor.runs().isEmpty());
   }
 
@@ -110,11 +119,12 @@ class EditorBufferTest {
     assertEquals("first\n漢X字\nlast", editor.renderedText());
     editor.handle(key(KeyType.Escape));
     assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
-    editor.handle(ctrl('l'));
+    editor.handle(character('r'));
     assertEquals(EditorBuffer.Mode.CARD_REFERENCE, editor.mode());
     editor.handle(key(KeyType.Escape));
     assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
-    assertEquals(EditorBuffer.Action.SAVE, editor.handle(ctrl('s')));
+    type(editor, ":w");
+    assertEquals(EditorBuffer.Action.SAVE, editor.handle(key(KeyType.Enter)));
     assertEquals(EditorBuffer.Action.EXIT, editor.handle(key(KeyType.Escape)));
   }
 
@@ -125,10 +135,6 @@ class EditorBufferTest {
 
   private static KeyStroke character(char value) {
     return new KeyStroke(value, false, false);
-  }
-
-  private static KeyStroke ctrl(char value) {
-    return new KeyStroke(value, true, false);
   }
 
   private static KeyStroke key(KeyType keyType) {

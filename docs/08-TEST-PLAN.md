@@ -32,7 +32,7 @@ Domain deterministic tests -> service tests -> SQLite integration (real temporar
 - Concurrent duplicate address install across processes/threads; graceful busy handling.
 
 ### TUI
-- 'l' typed inserts literal 'l'; Ctrl+L inserts typed link with no suggestions; Esc cancels without mutation.
+- 'l' typed in INSERT mode inserts literal 'l'; R in NORMAL mode inserts a typed link with no suggestions; Esc changes modes and cancels a literal prompt without mutation.
 - Deliberate Main navigation by next/prev/exact address only; no follow-link keystroke; no full-text-search field/backlink view.
 - Input resize, 80×24 and 120×35, focus, enter/escape, unknown shortcut, terminal mode restored on exception.
 - Unicode combining sequences and two-column glyph widths avoid cursor/content corruption.
@@ -42,10 +42,10 @@ Domain deterministic tests -> service tests -> SQLite integration (real temporar
 
 ~~~text
 open clean.db
-D -> N -> write "Horses" -> Ctrl+S -> Q
+D -> N -> write "Horses" -> Esc -> :w -> Enter -> Esc -> Q
 reopen clean.db -> D -> draft exists without address
 D -> selected -> F -> 3118/1 -> Enter -> installed
-D -> N -> type "Mules l" -> Ctrl+L -> "3118/2" -> save
+D -> N -> type "Mules l" -> Esc -> R -> "3118/2" -> Enter -> :w -> Enter
 F -> 3118/2a -> installed
 M -> G -> 3118/1 -> N -> 3118/2a (or next stored address)
 M -> read Mules -> link is printed only

@@ -111,11 +111,12 @@ public final class ProcessTuiHarness {
   private static List<KeyStroke> workflowKeys(Path bibFile) {
     List<KeyStroke> keys = new ArrayList<>();
     addCharacters(keys, "lnÜberblick 漢字 e\u0301");
-    keys.add(control('e'));
+    keys.add(key(KeyType.Escape));
+    keys.add(character('e'));
     addCharacters(keys, "b.paperkey, p. 27");
     keys.add(key(KeyType.Enter));
-    keys.add(control('s'));
-    keys.add(key(KeyType.Escape));
+    addCharacters(keys, ":w");
+    keys.add(key(KeyType.Enter));
     keys.add(key(KeyType.Escape));
     keys.add(character('f'));
     addCharacters(keys, "3118/1");
@@ -123,8 +124,9 @@ public final class ProcessTuiHarness {
 
     keys.add(character('n'));
     addCharacters(keys, "Duplicate address remains a draft.");
-    keys.add(control('s'));
     keys.add(key(KeyType.Escape));
+    addCharacters(keys, ":w");
+    keys.add(key(KeyType.Enter));
     keys.add(key(KeyType.Escape));
     keys.add(character('f'));
     addCharacters(keys, "3118/1");
@@ -226,10 +228,6 @@ public final class ProcessTuiHarness {
 
   private static KeyStroke character(char value) {
     return new KeyStroke(value, false, false);
-  }
-
-  private static KeyStroke control(char value) {
-    return new KeyStroke(value, true, false);
   }
 
   private static KeyStroke key(KeyType type) {

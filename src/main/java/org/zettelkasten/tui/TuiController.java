@@ -344,14 +344,16 @@ public final class TuiController {
                   + " code points; text is not truncated.");
         if (editor.mode() == EditorBuffer.Mode.CARD_REFERENCE
             || editor.mode() == EditorBuffer.Mode.INDEX_LITERAL
-            || editor.mode() == EditorBuffer.Mode.EXTERNAL_REFERENCE)
+            || editor.mode() == EditorBuffer.Mode.EXTERNAL_REFERENCE
+            || editor.mode() == EditorBuffer.Mode.COMMAND)
           lines.add(editor.promptLabel() + editor.promptText());
         if (!editor.validationMessage().isEmpty()) lines.add(editor.validationMessage());
-        if (editor.mode() == EditorBuffer.Mode.TEXT)
-          lines.add(
-              "INSERT  Esc Normal    Ctrl+S Save    Ctrl+L Card ref    Ctrl+K Keyterm    Ctrl+E ExRef");
+        if (editor.mode() == EditorBuffer.Mode.TEXT) lines.add("INSERT  Type freely    Esc NORMAL");
         else if (editor.mode() == EditorBuffer.Mode.NORMAL)
-          lines.add("NORMAL  I Insert    H/J/K/L Move    Ctrl+S Save    Esc Back");
+          lines.add(
+              "NORMAL  I Insert    H/J/K/L Move    R Card ref    T Keyterm    E ExRef    :w Save");
+        else if (editor.mode() == EditorBuffer.Mode.COMMAND)
+          lines.add("COMMAND  Enter Run    Esc Cancel");
         else lines.add("Literal prompt    Enter Insert    Esc Return to editor");
       }
       case INSTALL_ADDRESS -> {
@@ -449,7 +451,8 @@ public final class TuiController {
         if (bibliography.findBibCardForSource(currentSource.id()).isPresent())
           lines.add("Research BibCard exists. L/Enter to read it.");
         else lines.add("No user-authored research BibCard yet. C Create goal and overview.");
-        lines.add("H/Esc Return to source list. Main ExRefs are entered literally with Ctrl+E.");
+        lines.add(
+            "H/Esc Return to source list. Main ExRefs are entered literally with E in editor NORMAL mode.");
       }
       case BIB_CARD -> {
         lines.add(
@@ -494,7 +497,7 @@ public final class TuiController {
             "H returns to the parent screen; on Index dividers and BibCards H/L is contextual.");
         lines.add("Editor: INSERT types; Esc enters NORMAL; I resumes typing; Esc again returns.");
         lines.add(
-            "NORMAL: H/J/K/L move the cursor; Ctrl+S saves; Ctrl+L/K/E opens literal prompts.");
+            "NORMAL: H/J/K/L move; R/T/E enter literal prompts; :w saves; :q exits; :wq saves/exits.");
         lines.add(
             "Esc returns or cancels a literal prompt. No search, suggestions, or link following.");
       }
@@ -926,11 +929,16 @@ public final class TuiController {
 
   private void handleEditor(KeyStroke key) {
     EditorBuffer.Action action = editor.handle(key);
-    if (action == EditorBuffer.Action.SAVE) {
+    if (action == EditorBuffer.Action.SAVE || action == EditorBuffer.Action.SAVE_AND_EXIT) {
       try {
         currentDraft = cards.editDraft(currentDraft.id(), currentDraft.revision(), editor.runs());
-        editor = new EditorBuffer(currentDraft.authoredBody(), ids);
+        editor.markSaved();
         status = "Draft saved.";
+        if (action == EditorBuffer.Action.SAVE_AND_EXIT) {
+          editor = null;
+          screen = Screen.DESK;
+          refreshDrafts();
+        }
       } catch (RuntimeException exception) {
         status = safeMessage(exception);
       }
@@ -938,6 +946,7 @@ public final class TuiController {
       if (editor.dirty()) screen = Screen.CONFIRM_DISCARD;
       else {
         screen = Screen.DESK;
+        editor = null;
         refreshDrafts();
       }
     }

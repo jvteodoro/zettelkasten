@@ -48,14 +48,14 @@ class TuiControllerTest {
     controller.handle(character('n'));
     assertEquals(TuiController.Screen.EDITOR, controller.screen());
     controller.handle(character('l'));
-    controller.handle(ctrl('l'));
+    controller.handle(key(KeyType.Escape));
+    controller.handle(character('r'));
     type(controller, "3118/2a");
     controller.handle(key(KeyType.Enter));
     assertEquals(1, eventCount(database));
-    controller.handle(ctrl('s'));
+    type(controller, ":w");
+    controller.handle(key(KeyType.Enter));
     assertEquals(3, eventCount(database));
-    controller.handle(key(KeyType.Escape));
-    assertEquals(EditorBuffer.Mode.NORMAL, controller.editor().mode());
     controller.handle(key(KeyType.Escape));
     assertEquals(TuiController.Screen.DESK, controller.screen());
 
@@ -396,11 +396,12 @@ class TuiControllerTest {
     controller.handle(character('k'));
     controller.handle(character('l'));
     controller.handle(character('n'));
-    controller.handle(ctrl('e'));
+    controller.handle(key(KeyType.Escape));
+    controller.handle(character('e'));
     type(controller, "b.paperkey, p. 27");
     controller.handle(key(KeyType.Enter));
-    controller.handle(ctrl('s'));
-    controller.handle(key(KeyType.Escape));
+    type(controller, ":w");
+    controller.handle(key(KeyType.Enter));
     controller.handle(key(KeyType.Escape));
     controller.handle(character('f'));
     type(controller, "3118/27");
@@ -456,10 +457,6 @@ class TuiControllerTest {
 
   private static KeyStroke character(char value) {
     return new KeyStroke(value, false, false);
-  }
-
-  private static KeyStroke ctrl(char value) {
-    return new KeyStroke(value, true, false);
   }
 
   private static KeyStroke key(KeyType keyType) {

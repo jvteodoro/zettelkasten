@@ -52,8 +52,9 @@ public final class TerminalRenderer {
   private static String navigationHint(TuiController controller) {
     if (controller.screen() == TuiController.Screen.EDITOR && controller.editor() != null) {
       return switch (controller.editor().mode()) {
-        case TEXT -> "INSERT — type freely   Esc NORMAL   Ctrl+S Save";
-        case NORMAL -> "NORMAL — H/J/K/L Cursor   I Insert   Esc Back";
+        case TEXT -> "INSERT — type freely   Esc NORMAL";
+        case NORMAL -> "NORMAL — H/J/K/L Move   I Insert   :w Save   :q Exit";
+        case COMMAND -> "COMMAND — Enter Run   Esc Cancel";
         case CARD_REFERENCE, INDEX_LITERAL, EXTERNAL_REFERENCE ->
             "LITERAL PROMPT — Enter confirm   Esc cancel";
       };

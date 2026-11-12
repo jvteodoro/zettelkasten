@@ -16,7 +16,7 @@ An explicit mode switch must not smuggle automatic backlinks or semantic search 
 ## User journeys and acceptance
 
 ### UJ-01 Create on Desk
-From Desk, create a blank maincard, write Portuguese/German/English Unicode, insert literal card reference by Ctrl+L, save. No address required. Card appears as unfiled; can resume and edit. Close/reopen app: draft persists.
+From Desk, create a blank maincard, write Portuguese/German/English Unicode, switch to NORMAL mode, and insert a literal card reference with R. Save with :w. No address required. Card appears as unfiled; can resume and edit. Close/reopen app: draft persists.
 
 ### UJ-02 File in Main
 Open Desk card; manually enter proposed numeric-alpha address; navigate existing Main/Index for context; choose installation. Reject an invalid/duplicate address without deleting draft. On successful transaction card becomes Installed, immutable identity, fixed address, canonical filing position and immutable initial body. Event logged. Reject destructive edits afterward; allow append-only annotation.
