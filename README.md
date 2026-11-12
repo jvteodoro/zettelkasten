@@ -2,7 +2,7 @@
 
 A Java terminal application that preserves the working constraints of a physical Antinet Zettelkasten while keeping machine-readable structure available for archival and optional future analysis.
 
-The core workflows are implemented: Desk drafts, deliberate Maincard installation, manually authored Index cards, local BibTeX import and authored BibCards/notes, and offline archive maintenance. See the [implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md) for remaining work.
+The core workflows are implemented: Desk drafts (including confirmed, auditable discard), deliberate Maincard installation, manually authored Index cards, local BibTeX import and authored BibCards/notes, and offline archive maintenance. The [implementation roadmap](docs/10-IMPLEMENTATION-ROADMAP.md) records the dependency sequence and issue traceability; live Zotero synchronization remains future scope.
 
 ## Product boundaries
 
