@@ -321,10 +321,8 @@ public final class TuiController {
         lines.add("Q  Quit");
       }
       case DESK -> {
-        lines.add(
-            "Drafts: "
-                + drafts.size()
-                + "    J/K Select    L Edit    N New    F File    X Discard");
+        lines.add("Drafts: " + drafts.size() + "    J/K Select    L Edit    H Home");
+        lines.add("N New    F File    X Discard");
         if (drafts.isEmpty()) lines.add("The Desk is empty.");
         for (int index = 0; index < drafts.size(); index++) {
           MainCard draft = drafts.get(index);
@@ -356,7 +354,8 @@ public final class TuiController {
         lines.add("Enter Install    Esc Cancel");
       }
       case MAIN -> {
-        lines.add("Main — physical address order    J/K Next/previous    G Exact address");
+        lines.add(
+            "Main — physical address order    J/K Next/previous    G Exact address    H Home");
         if (installed.isEmpty()) lines.add("No installed Main cards.");
         else {
           MainCard card = installed.get(selectedMain);
@@ -397,7 +396,7 @@ public final class TuiController {
       }
       case INDEX_LIST_CARD, KEYTERM_CARD -> {
         lines.add(selectedOwnerIsList ? "List Index card" : "Dedicated keyterm card");
-        lines.add("J/K Select entry    A Add entry    Enter Read pointer");
+        lines.add("J/K Select entry    A Add entry    Enter Read pointer    H Back");
         if (selectedOwnerIsList) lines.add("P Promote selected entry to a dedicated keyterm card");
         if (indexEntries.isEmpty()) lines.add("No authored entries yet.");
         for (int index = 0; index < indexEntries.size(); index++) {
@@ -409,7 +408,7 @@ public final class TuiController {
         lines.add("Pointers are printed text; open Main and enter an address yourself.");
       }
       case KEYTERM_CARDS -> {
-        lines.add("Dedicated keyterm cards — alphabetical    J/K Select    L/Enter Open");
+        lines.add("Dedicated keyterm cards — alphabetical    J/K Select    L/Enter Open    H Back");
         if (keytermCards.isEmpty()) lines.add("No dedicated keyterm cards.");
         for (int index = 0; index < keytermCards.size(); index++) {
           lines.add((index == selectedKeyterm ? "> " : "  ") + keytermCards.get(index).keyterm());
@@ -421,7 +420,8 @@ public final class TuiController {
         lines.add("Enter Continue    Esc Cancel");
       }
       case BIB -> {
-        lines.add("Bibliography Box — J/K Select    L/Enter Read citation    I Import BibTeX");
+        lines.add(
+            "Bibliography Box — J/K Select    L/Enter Read citation    I Import BibTeX    H Home");
         if (sources.isEmpty()) lines.add("No bibliographic sources are filed.");
         for (int index = 0; index < sources.size(); index++) {
           BibliographicSource source = sources.get(index);
@@ -442,7 +442,7 @@ public final class TuiController {
         if (bibliography.findBibCardForSource(currentSource.id()).isPresent())
           lines.add("Research BibCard exists. L/Enter to read it.");
         else lines.add("No user-authored research BibCard yet. C Create goal and overview.");
-        lines.add("Esc Return to source list. Main ExRefs are entered literally with Ctrl+E.");
+        lines.add("H/Esc Return to source list. Main ExRefs are entered literally with Ctrl+E.");
       }
       case BIB_CARD -> {
         lines.add(
@@ -451,12 +451,12 @@ public final class TuiController {
         if (!showingBibBack) {
           lines.add("Reading goal: " + currentBibCard.readingGoal());
           lines.add("Source overview: " + currentBibCard.sourceOverview());
-          lines.add("L Read back/BibNotes    A Append a located BibNote");
+          lines.add("H/L Flip front/back    A Append a located BibNote");
         } else {
           if (bibNotes.isEmpty()) lines.add("No user-authored BibNotes.");
           for (BibNote note : bibNotes)
             lines.add("(" + note.locatorLiteral() + ") " + note.authoredText());
-          lines.add("H Read front    A Append a located BibNote");
+          lines.add("H/L Flip front/back    A Append a located BibNote");
         }
       }
       case BIB_INPUT -> {
@@ -483,7 +483,8 @@ public final class TuiController {
         lines.add("Main: J/K physical neighbors, G exact address; printed links are not actions");
         lines.add("Index: H/L divider, J/K list; + overflow; * keyterms; A append; P promote");
         lines.add("Bib: J/K sources, L/Enter citation, I import, C research card, A note");
-        lines.add("H returns to the parent screen; in the BibCard, H/L reads front/back.");
+        lines.add(
+            "H returns to the parent screen; on Index dividers and BibCards H/L is contextual.");
         lines.add("Editor: Ctrl+S Save, Ctrl+L card reference, Ctrl+K keyterm, Ctrl+E ExRef");
         lines.add(
             "Esc returns or cancels a literal prompt. No search, suggestions, or link following.");
