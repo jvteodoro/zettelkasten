@@ -18,6 +18,7 @@
     <junit.version>5.12.2</junit.version>
     <spotless.version>2.44.5</spotless.version>
     <google-java-format.version>1.27.0</google-java-format.version>
+    <jbibtex.version>1.0.20</jbibtex.version>
   </properties>
   <dependencies>
     <dependency>
@@ -25,6 +26,10 @@
     </dependency>
     <dependency>
       <groupId>org.xerial</groupId><artifactId>sqlite-jdbc</artifactId><version>${sqlite.version}</version>
+    </dependency>
+    <!-- Purpose: real offline BibTeX syntax parsing; New BSD License; pinned behind adapter. -->
+    <dependency>
+      <groupId>org.jbibtex</groupId><artifactId>jbibtex</artifactId><version>${jbibtex.version}</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId><version>${junit.version}</version><scope>test</scope>

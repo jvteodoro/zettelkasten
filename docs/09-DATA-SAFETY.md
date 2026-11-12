@@ -30,7 +30,7 @@ A forward-compat reader either preserves unknown future fields in a structured e
 
 - Terminal content may include untrusted ANSI escape sequences or control chars from imported BibTeX; escape for display, prevent terminal injection.
 - SQL always parameterized; file paths normalized but do not follow untrusted symlinks blindly when writing backup/restore.
-- BibTeX inputs untrusted, parser limits size/depth, avoid arbitrary TeX command execution. Zotero local API opt-in, localhost only, no auth token in logs, disable by default.
+- BibTeX inputs are untrusted and parsed as data, never executed as TeX. The current parser adapter limits files to 16 MiB and brace nesting to 256, preserves the original UTF-8 file, and rejects malformed files atomically. Zotero local API opt-in, localhost only, no auth token in logs, disable by default.
 - Journals and logs avoid raw card text/PII; analytics extracts are user-controlled local outputs.
 - Unlimited or deeply nested input must be bounded to protect terminal and importer memory use, without truncating canonical user data.
 - Normal UI cannot perform destructive maintenance; repair is explicit, validated, previewed, backed up and logged.

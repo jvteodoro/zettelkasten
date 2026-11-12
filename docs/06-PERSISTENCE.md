@@ -15,6 +15,12 @@ redirect must resolve to a dedicated keyterm card. Index target literals remain 
 even when those IDs are null. Promotion rows must point to a copied entry with the same
 authored target and to a keyterm card named for the promoted source entry.
 
+Migration V003 protects authored BibNotes, provider aliases, import batches, and
+per-entry import diagnostics from update or deletion. BibTeX import records a
+namespace, descriptive source name, whole-file SHA-256, raw file content, per-entry
+outcome, and domain event in the same transaction as any accepted source records.
+Rejected files keep their diagnostics but commit no new bibliographic sources.
+
 ## Persistence contract
 
 Single embedded SQLite database (e.g. \`slipbox.db\`) is the **canonical store**. WAL may create transient \`-wal\` and \`-shm\` files; explain this to users. No application service or DB server. Support one writer application per file; second writer receives a clear lock error/read-only option. Use Xerial SQLite JDBC (pin version via Maven and verify compatible Java), Flyway community or hand-rolled numbered immutable migrations, never ORM auto-DDL. Implement reusable JDBC repositories with prepared statements.

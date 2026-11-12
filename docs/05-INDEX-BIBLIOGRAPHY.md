@@ -35,6 +35,21 @@ Index does not auto-link every occurrence, tag cards, suggest synonym, or offer 
 - Expose a dry-run report of new/changed/conflict/unchanged before applying.
 - Support preserving BibTeX citation aliases after key rename.
 
+The offline importer stores source UUIDs independently from provider aliases, scoped by
+namespace and citation key. Dry-run parses and classifies entries without writing.
+Apply is per-file atomic: any parse error, changed citation key, or DOI collision
+records a rejected batch and commits none of that file's new sources. Unchanged aliases
+reimport as unchanged; two namespaces may use the same citation key without merging.
+Imported fields and the complete original UTF-8 file are retained. Import never creates
+a BibCard or BibNote. Users create those separately, and notes keep their exact locator
+text and append order.
+When a citation key is intentionally renamed, users can append the new scoped alias to
+the existing source identity; aliases are never rewritten or inferred automatically.
+
+The parser dependency is isolated behind an infrastructure adapter. ADR
+0006-bibtex-parser records the selected version, license, maintenance caveat, and
+replacement path.
+
 ## Zotero seam
 
 Port \`BibliographyProvider\`: \`listSources\`, \`fetchSource(externalKey)\`, \`importBatch\`; import ID always scoped. A \`ZoteroLocalProvider\` can later use the *official local API*, explicitly opted-in and only when Zotero is available; no direct access to Zotero's SQLite database, no automatic cloud calls, no requirement for Zotero to use the Antinet.

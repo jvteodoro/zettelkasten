@@ -5,7 +5,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -13,7 +15,9 @@ import java.util.UUID;
 import org.zettelkasten.application.PersistenceException;
 import org.zettelkasten.application.port.BibliographyRepository;
 import org.zettelkasten.domain.BibCard;
+import org.zettelkasten.domain.BibNote;
 import org.zettelkasten.domain.BibliographicSource;
+import org.zettelkasten.domain.SourceExternalId;
 
 /** JDBC adapter separating imported source metadata and authored bibliographic research. */
 final class SqliteBibliographyRepository implements BibliographyRepository {
@@ -53,7 +57,7 @@ final class SqliteBibliographyRepository implements BibliographyRepository {
       insert.setString(18, source.updatedAt().toString());
       insert.executeUpdate();
       insertRawFields(source);
-      events.append("BibliographicSourceImported", "BIBLIOGRAPHIC_SOURCE", source.id(), "{}");
+      events.append("BibliographicSourceCreated", "BIBLIOGRAPHIC_SOURCE", source.id(), "{}");
     } catch (SQLException exception) {
       throw new PersistenceException("Could not create bibliographic source", exception);
     }
@@ -140,6 +144,177 @@ final class SqliteBibliographyRepository implements BibliographyRepository {
       }
     } catch (SQLException | RuntimeException exception) {
       throw new PersistenceException("Could not read BibCard", exception);
+    }
+  }
+
+  @Override
+  public List<BibliographicSource> findSources() {
+    List<UUID> ids = new ArrayList<>();
+    try (PreparedStatement query =
+            connection.prepareStatement(
+                "SELECT id FROM bibliographic_sources ORDER BY title COLLATE NOCASE,id");
+        ResultSet rows = query.executeQuery()) {
+      while (rows.next()) ids.add(UUID.fromString(rows.getString(1)));
+      return ids.stream().map(this::findSource).flatMap(Optional::stream).toList();
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not list bibliographic sources", exception);
+    }
+  }
+
+  @Override
+  public List<BibliographicSource> findSourcesByDoi(String doi) {
+    Objects.requireNonNull(doi, "doi");
+    List<UUID> ids = new ArrayList<>();
+    try (PreparedStatement query =
+        connection.prepareStatement(
+            "SELECT id FROM bibliographic_sources WHERE lower(doi)=lower(?) ORDER BY id")) {
+      query.setString(1, doi);
+      try (ResultSet rows = query.executeQuery()) {
+        while (rows.next()) ids.add(UUID.fromString(rows.getString(1)));
+      }
+      return ids.stream().map(this::findSource).flatMap(Optional::stream).toList();
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not find bibliographic DOI", exception);
+    }
+  }
+
+  @Override
+  public Optional<UUID> findSourceIdByExternalId(String provider, String scope, String externalId) {
+    try (PreparedStatement query =
+        connection.prepareStatement(
+            "SELECT source_id FROM source_external_ids WHERE provider=? AND scope=? AND external_id=?")) {
+      query.setString(1, provider);
+      query.setString(2, scope);
+      query.setString(3, externalId);
+      try (ResultSet row = query.executeQuery()) {
+        return row.next() ? Optional.of(UUID.fromString(row.getString(1))) : Optional.empty();
+      }
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not resolve source external identity", exception);
+    }
+  }
+
+  @Override
+  public void insertSourceExternalId(SourceExternalId externalId) {
+    try (PreparedStatement insert =
+        connection.prepareStatement(
+            "INSERT INTO source_external_ids(id,source_id,provider,scope,external_id) VALUES(?,?,?,?,?)")) {
+      insert.setString(1, externalId.id().toString());
+      insert.setString(2, externalId.sourceId().toString());
+      insert.setString(3, externalId.provider());
+      insert.setString(4, externalId.scope());
+      insert.setString(5, externalId.externalId());
+      insert.executeUpdate();
+      events.append("BibliographicAliasAdded", "BIBLIOGRAPHIC_SOURCE", externalId.sourceId(), "{}");
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not attach source external identity", exception);
+    }
+  }
+
+  @Override
+  public void insertBibNote(BibNote note) {
+    try (PreparedStatement insert =
+        connection.prepareStatement(
+            "INSERT INTO bibnotes(id,bibcard_id,ordinal,locator_type,locator_literal,authored_text,created_at,derived_main_card_id) "
+                + "VALUES(?,?,?,?,?,?,?,?)")) {
+      insert.setString(1, note.id().toString());
+      insert.setString(2, note.bibCardId().toString());
+      insert.setInt(3, note.ordinal());
+      insert.setString(4, note.locatorType().name());
+      insert.setString(5, note.locatorLiteral());
+      insert.setString(6, note.authoredText());
+      insert.setString(7, note.createdAt().toString());
+      insert.setString(
+          8, note.derivedMainCardId() == null ? null : note.derivedMainCardId().toString());
+      insert.executeUpdate();
+      events.append(
+          "BibNoteAdded", "BIB_CARD", note.bibCardId(), "{\"ordinal\":" + note.ordinal() + "}");
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not append BibNote", exception);
+    }
+  }
+
+  @Override
+  public List<BibNote> findBibNotes(UUID bibCardId) {
+    try (PreparedStatement query =
+        connection.prepareStatement(
+            "SELECT id,bibcard_id,ordinal,locator_type,locator_literal,authored_text,created_at,derived_main_card_id "
+                + "FROM bibnotes WHERE bibcard_id=? ORDER BY ordinal")) {
+      query.setString(1, bibCardId.toString());
+      try (ResultSet rows = query.executeQuery()) {
+        List<BibNote> notes = new ArrayList<>();
+        while (rows.next()) {
+          String derived = rows.getString(8);
+          notes.add(
+              new BibNote(
+                  UUID.fromString(rows.getString(1)),
+                  UUID.fromString(rows.getString(2)),
+                  rows.getInt(3),
+                  BibNote.LocatorType.valueOf(rows.getString(4)),
+                  rows.getString(5),
+                  rows.getString(6),
+                  Instant.parse(rows.getString(7)),
+                  derived == null ? null : UUID.fromString(derived)));
+        }
+        return List.copyOf(notes);
+      }
+    } catch (SQLException | RuntimeException exception) {
+      throw new PersistenceException("Could not read BibNotes", exception);
+    }
+  }
+
+  @Override
+  public void insertImportBatch(
+      UUID id,
+      String namespace,
+      String sourceName,
+      String contentSha256,
+      String status,
+      Instant importedAt) {
+    try (PreparedStatement insert =
+        connection.prepareStatement(
+            "INSERT INTO import_batches(id,provider,namespace,source_name,content_sha256,status,imported_at) "
+                + "VALUES(?,'BIBTEX_FILE',?,?,?,?,?)")) {
+      insert.setString(1, id.toString());
+      insert.setString(2, namespace);
+      insert.setString(3, sourceName);
+      insert.setString(4, contentSha256);
+      insert.setString(5, status);
+      insert.setString(6, importedAt.toString());
+      insert.executeUpdate();
+      events.append(
+          "BibTeXImport" + ("APPLIED".equals(status) ? "Applied" : "Rejected"),
+          "IMPORT_BATCH",
+          id,
+          "{\"status\":\"" + status + "\",\"sha256\":\"" + contentSha256 + "\"}");
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not persist BibTeX import batch", exception);
+    }
+  }
+
+  @Override
+  public void insertImportEntry(
+      UUID id,
+      UUID batchId,
+      UUID sourceId,
+      String externalKey,
+      String rawRecord,
+      String outcome,
+      String diagnostic) {
+    try (PreparedStatement insert =
+        connection.prepareStatement(
+            "INSERT INTO import_entries(id,batch_id,source_id,external_key,raw_record,outcome,diagnostic) "
+                + "VALUES(?,?,?,?,?,?,?)")) {
+      insert.setString(1, id.toString());
+      insert.setString(2, batchId.toString());
+      insert.setString(3, sourceId == null ? null : sourceId.toString());
+      insert.setString(4, externalKey);
+      insert.setString(5, rawRecord);
+      insert.setString(6, outcome);
+      insert.setString(7, diagnostic);
+      insert.executeUpdate();
+    } catch (SQLException exception) {
+      throw new PersistenceException("Could not persist BibTeX import entry", exception);
     }
   }
 

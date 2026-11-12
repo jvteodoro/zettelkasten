@@ -21,7 +21,11 @@ final class MigrationRunner {
           new Migration(
               2,
               "Index promotion provenance and append-only entries",
-              "/db/migration/V002__index_promotion_provenance.sql"));
+              "/db/migration/V002__index_promotion_provenance.sql"),
+          new Migration(
+              3,
+              "Bibliography append-only notes and import provenance",
+              "/db/migration/V003__bibliography_append_only.sql"));
 
   int migrate(Connection connection) throws SQLException {
     int currentVersion = currentVersion(connection);

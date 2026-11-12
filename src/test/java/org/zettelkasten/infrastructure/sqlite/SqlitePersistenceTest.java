@@ -30,6 +30,7 @@ import org.zettelkasten.application.PersistenceException;
 import org.zettelkasten.domain.AddressReference;
 import org.zettelkasten.domain.AuthoredReference;
 import org.zettelkasten.domain.BibCard;
+import org.zettelkasten.domain.BibNote;
 import org.zettelkasten.domain.BibliographicSource;
 import org.zettelkasten.domain.BodyRun;
 import org.zettelkasten.domain.CardAnnotation;
@@ -43,6 +44,7 @@ import org.zettelkasten.domain.ListIndexCard;
 import org.zettelkasten.domain.MainCard;
 import org.zettelkasten.domain.NumericAlphaAddress;
 import org.zettelkasten.domain.PlacementSnapshot;
+import org.zettelkasten.domain.SourceExternalId;
 import org.zettelkasten.domain.TextRun;
 
 class SqlitePersistenceTest {
@@ -56,7 +58,7 @@ class SqlitePersistenceTest {
     Path path = temp.resolve("slipbox.db");
     SqliteDatabase database = SqliteDatabase.create(path);
     assertTrue(Files.isRegularFile(path));
-    assertEquals(2, database.schemaVersion());
+    assertEquals(3, database.schemaVersion());
     try (var connection = database.newConnection();
         Statement statement = connection.createStatement();
         var foreignKeys = statement.executeQuery("PRAGMA foreign_keys")) {
@@ -84,6 +86,9 @@ class SqlitePersistenceTest {
       assertEquals(64, migration.getString(2).length());
       assertTrue(migration.next());
       assertEquals(2, migration.getInt(1));
+      assertEquals(64, migration.getString(2).length());
+      assertTrue(migration.next());
+      assertEquals(3, migration.getInt(1));
       assertEquals(64, migration.getString(2).length());
       assertFalse(migration.next());
     }
@@ -312,12 +317,79 @@ class SqlitePersistenceTest {
             "IndexCardCreated",
             "IndexCardCreated",
             "IndexCardCreated",
-            "BibliographicSourceImported",
+            "BibliographicSourceCreated",
             "BibCardCreated"),
         reopened
             .unitOfWork()
             .transact(
                 tx -> tx.events().findAfter(0, 100).stream().map(DomainEvent::eventType).toList()));
+  }
+
+  @Test
+  void bibliographyNotesAliasesAndImportHistoryAreAppendOnly() throws Exception {
+    var database = SqliteDatabase.create(temp.resolve("bib-append-only.db"));
+    var source =
+        new BibliographicSource(
+            uuid(800),
+            "book",
+            "Title",
+            "Author",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            Map.of(),
+            "@book{x,title={Title}}",
+            NOW,
+            NOW);
+    var card = new BibCard(uuid(801), source.id(), NOW, "Goal", "Overview");
+    var note =
+        new BibNote(
+            uuid(802), card.id(), 0, BibNote.LocatorType.PAGE, "xiv", "Observation", NOW, null);
+    database
+        .unitOfWork()
+        .transact(
+            tx -> {
+              tx.bibliography().insertSource(source);
+              tx.bibliography().insertBibCard(card);
+              tx.bibliography().insertBibNote(note);
+              tx.bibliography()
+                  .insertSourceExternalId(
+                      new SourceExternalId(uuid(803), source.id(), "BIBTEX_FILE", "scope", "x"));
+              tx.bibliography()
+                  .insertImportBatch(uuid(804), "scope", "x.bib", "a".repeat(64), "APPLIED", NOW);
+              tx.bibliography()
+                  .insertImportEntry(
+                      uuid(805), uuid(804), source.id(), "x", source.rawRecord(), "NEW", "");
+              return null;
+            });
+
+    try (var connection = database.newConnection();
+        Statement statement = connection.createStatement()) {
+      assertThrows(
+          SQLException.class,
+          () -> statement.executeUpdate("UPDATE bibnotes SET locator_literal='lost'"));
+      assertThrows(SQLException.class, () -> statement.executeUpdate("DELETE FROM bibnotes"));
+      assertThrows(
+          SQLException.class,
+          () -> statement.executeUpdate("UPDATE source_external_ids SET external_id='changed'"));
+      assertThrows(
+          SQLException.class, () -> statement.executeUpdate("DELETE FROM source_external_ids"));
+      assertThrows(
+          SQLException.class,
+          () -> statement.executeUpdate("UPDATE import_batches SET status='REJECTED'"));
+      assertThrows(SQLException.class, () -> statement.executeUpdate("DELETE FROM import_batches"));
+      assertThrows(
+          SQLException.class,
+          () -> statement.executeUpdate("UPDATE import_entries SET outcome='ERROR'"));
+      assertThrows(SQLException.class, () -> statement.executeUpdate("DELETE FROM import_entries"));
+    }
   }
 
   @Test
@@ -558,7 +630,7 @@ class SqlitePersistenceTest {
       statement.execute("PRAGMA user_version = 0");
     }
     var migrated = SqliteDatabase.open(path);
-    assertEquals(2, migrated.schemaVersion());
+    assertEquals(3, migrated.schemaVersion());
     boolean noDrafts = migrated.unitOfWork().transact(tx -> tx.mainCards().findDrafts().isEmpty());
     assertTrue(noDrafts);
     try (var connection = migrated.newConnection();
