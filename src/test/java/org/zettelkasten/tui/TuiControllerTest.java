@@ -55,6 +55,8 @@ class TuiControllerTest {
     controller.handle(ctrl('s'));
     assertEquals(3, eventCount(database));
     controller.handle(key(KeyType.Escape));
+    assertEquals(EditorBuffer.Mode.NORMAL, controller.editor().mode());
+    controller.handle(key(KeyType.Escape));
     assertEquals(TuiController.Screen.DESK, controller.screen());
 
     var draft = service.getDrafts().getFirst();
@@ -134,6 +136,8 @@ class TuiControllerTest {
     controller.handle(character('x'));
     controller.handle(new KeyStroke((char) 3, true, false));
     assertTrue(controller.status().contains("no card data was discarded"));
+    controller.handle(key(KeyType.Escape));
+    assertEquals(EditorBuffer.Mode.NORMAL, controller.editor().mode());
     controller.handle(key(KeyType.Escape));
     assertEquals(TuiController.Screen.CONFIRM_DISCARD, controller.screen());
     controller.handle(character('n'));
@@ -396,6 +400,7 @@ class TuiControllerTest {
     type(controller, "b.paperkey, p. 27");
     controller.handle(key(KeyType.Enter));
     controller.handle(ctrl('s'));
+    controller.handle(key(KeyType.Escape));
     controller.handle(key(KeyType.Escape));
     controller.handle(character('f'));
     type(controller, "3118/27");

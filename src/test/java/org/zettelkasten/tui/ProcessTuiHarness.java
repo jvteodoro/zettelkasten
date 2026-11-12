@@ -116,6 +116,7 @@ public final class ProcessTuiHarness {
     keys.add(key(KeyType.Enter));
     keys.add(control('s'));
     keys.add(key(KeyType.Escape));
+    keys.add(key(KeyType.Escape));
     keys.add(character('f'));
     addCharacters(keys, "3118/1");
     keys.add(key(KeyType.Enter));
@@ -123,6 +124,7 @@ public final class ProcessTuiHarness {
     keys.add(character('n'));
     addCharacters(keys, "Duplicate address remains a draft.");
     keys.add(control('s'));
+    keys.add(key(KeyType.Escape));
     keys.add(key(KeyType.Escape));
     keys.add(character('f'));
     addCharacters(keys, "3118/1");

@@ -342,10 +342,17 @@ public final class TuiController {
                   + "/"
                   + editor.softLimit()
                   + " code points; text is not truncated.");
-        if (editor.mode() != EditorBuffer.Mode.TEXT)
+        if (editor.mode() == EditorBuffer.Mode.CARD_REFERENCE
+            || editor.mode() == EditorBuffer.Mode.INDEX_LITERAL
+            || editor.mode() == EditorBuffer.Mode.EXTERNAL_REFERENCE)
           lines.add(editor.promptLabel() + editor.promptText());
         if (!editor.validationMessage().isEmpty()) lines.add(editor.validationMessage());
-        lines.add("Ctrl+L card reference  Ctrl+K keyterm  Ctrl+E ExRef  Ctrl+S Save  Esc Back");
+        if (editor.mode() == EditorBuffer.Mode.TEXT)
+          lines.add(
+              "INSERT  Esc Normal    Ctrl+S Save    Ctrl+L Card ref    Ctrl+K Keyterm    Ctrl+E ExRef");
+        else if (editor.mode() == EditorBuffer.Mode.NORMAL)
+          lines.add("NORMAL  I Insert    H/J/K/L Move    Ctrl+S Save    Esc Back");
+        else lines.add("Literal prompt    Enter Insert    Esc Return to editor");
       }
       case INSTALL_ADDRESS -> {
         lines.add("Choose a numeric-alpha address manually. No address suggestions are shown.");
@@ -485,7 +492,9 @@ public final class TuiController {
         lines.add("Bib: J/K sources, L/Enter citation, I import, C research card, A note");
         lines.add(
             "H returns to the parent screen; on Index dividers and BibCards H/L is contextual.");
-        lines.add("Editor: Ctrl+S Save, Ctrl+L card reference, Ctrl+K keyterm, Ctrl+E ExRef");
+        lines.add("Editor: INSERT types; Esc enters NORMAL; I resumes typing; Esc again returns.");
+        lines.add(
+            "NORMAL: H/J/K/L move the cursor; Ctrl+S saves; Ctrl+L/K/E opens literal prompts.");
         lines.add(
             "Esc returns or cancels a literal prompt. No search, suggestions, or link following.");
       }

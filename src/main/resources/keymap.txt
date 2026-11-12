@@ -52,12 +52,25 @@ H/L    Read the BibCard front/back
 Ctrl+E  In Main draft editor, enter a literal external reference
 
 Editor:
+INSERT MODE:
+Esc     Return to NORMAL mode; text is unchanged
 Ctrl+S  Save draft
 Ctrl+L  Insert literal card reference
 Ctrl+K  Insert literal Index keyterm reference
 Ctrl+E  Insert literal external bibliographic reference
-Arrows  Move the editor cursor
-Esc     Cancel dialog / return
-Enter   Confirm a literal prompt / insert a newline in the editor
+Enter   Insert a newline
 
-In the editor and text-entry prompts, h/j/k/l are ordinary authored text.
+NORMAL MODE:
+H/J/K/L Move the editor cursor
+I       Return to INSERT mode
+Ctrl+S  Save draft
+Ctrl+L  Insert literal card reference
+Ctrl+K  Insert literal Index keyterm reference
+Ctrl+E  Insert literal external bibliographic reference
+Esc     Return to the Desk (a second Esc after leaving INSERT mode)
+
+LITERAL PROMPTS:
+Enter   Confirm the literal
+Esc     Cancel the prompt and return to the prior editor mode
+
+In INSERT mode and text-entry prompts, h/j/k/l are ordinary authored text.

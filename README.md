@@ -26,7 +26,7 @@ java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar init --db ~/zettelkasten/sl
 java -jar target/zettelkasten-0.1.0-SNAPSHOT-all.jar open --db ~/zettelkasten/slipbox.db
 ~~~
 
-The jar name includes the Maven project version. Use `--version` to inspect the application version. `open` requires an existing archive and does not create one. In the terminal, use **J/K** to select and **L/Enter** to open a box or item; **H** returns to its parent screen where applicable. **?** opens help and **Q** quits. Draft editor shortcuts are listed in [`keymap.txt`](src/main/resources/keymap.txt).
+The jar name includes the Maven project version. Use `--version` to inspect the application version. `open` requires an existing archive and does not create one. In the terminal, use **J/K** to select and **L/Enter** to open a box or item; **H** returns to its parent screen where applicable. The card editor starts in INSERT mode: **Esc** switches to NORMAL mode, **H/J/K/L** move the cursor, **I** resumes typing, and **Esc** again returns to Desk. **?** opens help and **Q** quits. Full bindings are listed in [`keymap.txt`](src/main/resources/keymap.txt).
 
 CLI maintenance commands are `doctor`, `backup`, `restore`, `export`, `import-archive`, `migrate`, and the optional read-only `graph-export`; run `--help` for syntax. Restore and archive import write to a new destination. Migrations are explicit and create a safety backup before applying changes. Graph export writes a checksummed offline projection; it does not create a graph UI or a second writable store. SQLite can create temporary WAL/SHM sidecars while the archive is open.
 

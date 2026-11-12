@@ -17,6 +17,7 @@ import org.zettelkasten.domain.TextRun;
 public final class EditorBuffer {
   public enum Mode {
     TEXT,
+    NORMAL,
     CARD_REFERENCE,
     INDEX_LITERAL,
     EXTERNAL_REFERENCE
@@ -34,6 +35,7 @@ public final class EditorBuffer {
   private int runIndex;
   private int codePointOffset;
   private Mode mode = Mode.TEXT;
+  private Mode promptReturnMode = Mode.TEXT;
   private final StringBuilder prompt = new StringBuilder();
   private String validationMessage = "";
   private boolean dirty;
@@ -57,15 +59,20 @@ public final class EditorBuffer {
   public Action handle(KeyStroke key) {
     Objects.requireNonNull(key, "key");
     if (key.getKeyType() == KeyType.Escape) {
-      if (mode != Mode.TEXT) {
-        mode = Mode.TEXT;
+      if (isPromptMode()) {
+        mode = promptReturnMode;
         prompt.setLength(0);
         validationMessage = "";
         return Action.NONE;
       }
+      if (mode == Mode.TEXT) {
+        mode = Mode.NORMAL;
+        return Action.NONE;
+      }
       return Action.EXIT;
     }
-    if (mode != Mode.TEXT) return handlePrompt(key);
+    if (isPromptMode()) return handlePrompt(key);
+    if (mode == Mode.NORMAL) return handleNormalMode(key);
     if (key.getKeyType() == KeyType.Character && key.isCtrlDown()) {
       char chord = Character.toLowerCase(key.getCharacter());
       if (chord == 's') return Action.SAVE;
@@ -103,6 +110,7 @@ public final class EditorBuffer {
   public String promptLabel() {
     return switch (mode) {
       case TEXT -> "";
+      case NORMAL -> "";
       case CARD_REFERENCE -> "Card address literal (full, /stem, or ~/branch): ";
       case INDEX_LITERAL -> "Index keyterm literal: ";
       case EXTERNAL_REFERENCE -> "External reference literal: ";
@@ -149,10 +157,45 @@ public final class EditorBuffer {
   }
 
   private Action openPrompt(Mode requestedMode) {
+    promptReturnMode = mode;
     mode = requestedMode;
     prompt.setLength(0);
     validationMessage = "";
     return Action.NONE;
+  }
+
+  private Action handleNormalMode(KeyStroke key) {
+    if (key.getKeyType() == KeyType.Character && !key.isCtrlDown() && !key.isAltDown()) {
+      switch (Character.toLowerCase(key.getCharacter())) {
+        case 'i' -> mode = Mode.TEXT;
+        case 'h' -> moveLeft();
+        case 'j' -> moveVertical(1);
+        case 'k' -> moveVertical(-1);
+        case 'l' -> moveRight();
+        default -> {}
+      }
+    } else if (key.getKeyType() == KeyType.Character && key.isCtrlDown()) {
+      char chord = Character.toLowerCase(key.getCharacter());
+      if (chord == 's') return Action.SAVE;
+      if (chord == 'l') return openPrompt(Mode.CARD_REFERENCE);
+      if (chord == 'k') return openPrompt(Mode.INDEX_LITERAL);
+      if (chord == 'e') return openPrompt(Mode.EXTERNAL_REFERENCE);
+    } else if (key.getKeyType() == KeyType.ArrowLeft) {
+      moveLeft();
+    } else if (key.getKeyType() == KeyType.ArrowRight) {
+      moveRight();
+    } else if (key.getKeyType() == KeyType.ArrowUp) {
+      moveVertical(-1);
+    } else if (key.getKeyType() == KeyType.ArrowDown) {
+      moveVertical(1);
+    }
+    return Action.NONE;
+  }
+
+  private boolean isPromptMode() {
+    return mode == Mode.CARD_REFERENCE
+        || mode == Mode.INDEX_LITERAL
+        || mode == Mode.EXTERNAL_REFERENCE;
   }
 
   private Action handlePrompt(KeyStroke key) {
@@ -164,10 +207,10 @@ public final class EditorBuffer {
               case CARD_REFERENCE -> new CardLinkRun(ids.get(), prompt.toString());
               case INDEX_LITERAL -> new KeytermLinkRun(ids.get(), prompt.toString());
               case EXTERNAL_REFERENCE -> new ExRefRun(ids.get(), prompt.toString());
-              case TEXT -> throw new IllegalStateException("Not a prompt mode");
+              case TEXT, NORMAL -> throw new IllegalStateException("Not a prompt mode");
             };
         insertRunAtCursor(run);
-        mode = Mode.TEXT;
+        mode = promptReturnMode;
         prompt.setLength(0);
         validationMessage = "";
       } catch (IllegalArgumentException exception) {
@@ -304,6 +347,54 @@ public final class EditorBuffer {
       runIndex++;
       codePointOffset = 0;
     }
+  }
+
+  private void moveVertical(int direction) {
+    String text = renderedText();
+    int cursor = cursorUtf16Offset();
+    int previousNewline = cursor == 0 ? -1 : text.lastIndexOf('\n', cursor - 1);
+    int lineStart = previousNewline + 1;
+    int currentLineEnd = text.indexOf('\n', cursor);
+    if (currentLineEnd < 0) currentLineEnd = text.length();
+    int column = text.codePointCount(lineStart, Math.min(cursor, currentLineEnd));
+    int targetLineStart;
+    int targetLineEnd;
+    if (direction < 0) {
+      if (lineStart == 0) return;
+      targetLineEnd = lineStart - 1;
+      int priorNewline = targetLineEnd == 0 ? -1 : text.lastIndexOf('\n', targetLineEnd - 1);
+      targetLineStart = priorNewline + 1;
+    } else {
+      if (currentLineEnd >= text.length()) return;
+      targetLineStart = currentLineEnd + 1;
+      targetLineEnd = text.indexOf('\n', targetLineStart);
+      if (targetLineEnd < 0) targetLineEnd = text.length();
+    }
+    int targetColumn = Math.min(column, text.codePointCount(targetLineStart, targetLineEnd));
+    moveToUtf16Offset(text.offsetByCodePoints(targetLineStart, targetColumn));
+  }
+
+  private void moveToUtf16Offset(int offset) {
+    int consumed = 0;
+    for (int index = 0; index < runs.size(); index++) {
+      BodyRun run = runs.get(index);
+      int length = run.literal().length();
+      if (run instanceof TextRun text) {
+        if (offset <= consumed + length) {
+          runIndex = index;
+          codePointOffset = text.literal().codePointCount(0, offset - consumed);
+          return;
+        }
+      } else if (offset <= consumed + length) {
+        boolean closerToEnd = offset - consumed > length / 2;
+        runIndex = index + (closerToEnd ? 1 : 0);
+        codePointOffset = 0;
+        return;
+      }
+      consumed += length;
+    }
+    runIndex = runs.size();
+    codePointOffset = 0;
   }
 
   private static int utf16Offset(String value, int codePointOffset) {

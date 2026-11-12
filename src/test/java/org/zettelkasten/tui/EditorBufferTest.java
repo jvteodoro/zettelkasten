@@ -93,6 +93,31 @@ class EditorBufferTest {
     assertFalse(editor.runs().isEmpty());
   }
 
+  @Test
+  void escapeSwitchesInsertAndNormalModesAndVimKeysMoveUnicodeCursor() {
+    var editor = editor();
+    type(editor, "first\n漢字\nlast");
+    assertEquals(EditorBuffer.Mode.TEXT, editor.mode());
+    assertEquals(EditorBuffer.Action.NONE, editor.handle(key(KeyType.Escape)));
+    assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
+
+    editor.handle(character('k'));
+    editor.handle(character('h'));
+    assertEquals("first\n漢字\nlast".indexOf("字"), editor.cursorUtf16Offset());
+    editor.handle(character('i'));
+    assertEquals(EditorBuffer.Mode.TEXT, editor.mode());
+    editor.handle(character('X'));
+    assertEquals("first\n漢X字\nlast", editor.renderedText());
+    editor.handle(key(KeyType.Escape));
+    assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
+    editor.handle(ctrl('l'));
+    assertEquals(EditorBuffer.Mode.CARD_REFERENCE, editor.mode());
+    editor.handle(key(KeyType.Escape));
+    assertEquals(EditorBuffer.Mode.NORMAL, editor.mode());
+    assertEquals(EditorBuffer.Action.SAVE, editor.handle(ctrl('s')));
+    assertEquals(EditorBuffer.Action.EXIT, editor.handle(key(KeyType.Escape)));
+  }
+
   private static EditorBuffer editor() {
     AtomicLong sequence = new AtomicLong();
     return new EditorBuffer(List.of(), () -> new UUID(0, sequence.incrementAndGet()));

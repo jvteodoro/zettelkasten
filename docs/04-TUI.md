@@ -15,14 +15,14 @@ Java 25 + Lanterna (ncurses-like terminal implementation, not JNA curses). Suppo
 
 ## Global navigation
 
-At home, use J/K to select Desk, Main, Index, or Bib; L or Enter opens the selected box. H returns to a parent screen where applicable; ? opens help and Q quits with the unsaved draft prompt. Within the editor and literal prompts, printable characters—including h/j/k/l—remain authored input. Ctrl+S saves; Ctrl+L inserts a card reference; Esc cancels a dialog or returns. Ctrl+C is handled safely and is not treated as data deletion. The context-specific bindings and help are documented together and covered by key binding tests.
+At home, use J/K to select Desk, Main, Index, or Bib; L or Enter opens the selected box. H returns to a parent screen where applicable; ? opens help and Q quits with the unsaved draft prompt. The editor starts in INSERT mode. Esc switches to NORMAL mode, where H/J/K/L move the cursor and editor commands work; I returns to INSERT mode. Esc in NORMAL mode returns to Desk, asking what to do with unsaved changes when needed. Printable characters, including h/j/k/l, remain authored input in INSERT mode and literal prompts. Ctrl+S saves; Ctrl+L inserts a card reference. Ctrl+C is handled safely and is not treated as data deletion. The context-specific bindings and help are documented together and covered by key binding tests.
 
 When reading Main, J/K move to adjacent cards **without invoking a graph link traversal**. G prompts for an exact address and positions the Main drawer at that location (manual addressing is allowed). No typeahead or auto-complete. When user reads a link, it is ordinary printed text (or subtle pen-color equivalent), never a click target. An address in Index is a written pointer; user manually opens Main and types it.
 
 ## Editor
 
 - Represent body as \`List<BodyRun>\` with \`TextRun\`, \`InternalCardLinkRun\`, \`IndexKeytermLinkRun\`, \`ExternalReferenceRun\`. Every run stable ID, visible authored literal, position. Avoid substring offsets as canonical persisted reference identity.
-- Keep mode \`INSERT_TEXT\` default; modal \`INPUT_LINK_LITERAL\`, \`INPUT_INDEX_LITERAL\`, \`INPUT_EXREF\`, \`SAVE\`/confirmation. No conflict between 'l' and typing 'l'.
+- Start in INSERT mode; Esc switches to NORMAL mode, I resumes INSERT, and a second Esc returns from the editor. In NORMAL mode H/J/K/L move the cursor and Ctrl+S/Ctrl+L/K/E remain available. Literal prompts return to the mode from which they were opened. No conflict between 'l' and typing 'l' in INSERT mode.
 - Draft may be edited and corrected. Installed maincard opens read-only plus append-annotation editor (never direct overwrite).
 - 825 Unicode code points is a documented *default experimental soft limit* based on Scheper Appendix C, not fixed byte quota. Warn at 800/825, offer new card or manual override for accessibility; no truncation or silent discard. Count visible Unicode code points accurately; width/display using grapheme segmentation if available. Configurable strict limit later via ADR.
 - Structured link literal inserted at cursor and rendered as authored; hyperlink styling may differ but no clickable semantics.
@@ -43,13 +43,14 @@ When reading Main, J/K move to adjacent cards **without invoking a graph link tr
 | EDITOR [no address]                                             |
 | Perceptions of incompatible objectives may...                  |
 | See: 4214/2e/3a/1                                               |
-| Ctrl+L reference   Ctrl+S Save   Esc Back                       |
+| INSERT: type freely   Esc NORMAL   Ctrl+S Save                 |
 +-----------------------------------------------------------------+
 ~~~
 
 ## TUI acceptance tests
 
-- 'l' typed in normal editor emits literal 'l'; Ctrl+L prompts and creates a typed link run with exact printed address.
+- 'l' typed in INSERT mode emits literal 'l'; Esc enters NORMAL, where H/J/K/L move the cursor, I resumes typing, and another Esc exits the editor.
+- Ctrl+L works in INSERT and NORMAL modes, prompts for a literal, and creates a typed link run without suggestions.
 - Input + resize preserves text, cursor, lines, and no data loss; all terminal state is restored on failure.
 - No search field appears; no link cursor navigation exists; no automatic suggestions appear.
 - Link can point to nonexistent card and still save. Draft stemlink remains pending until installation.

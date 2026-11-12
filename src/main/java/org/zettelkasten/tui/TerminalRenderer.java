@@ -26,13 +26,14 @@ public final class TerminalRenderer {
     }
     int width = size.getColumns() - 2;
     graphics.putString(1, 0, "ZETTELKASTEN — analog-first local slip-box");
-    graphics.putString(1, 1, "J/K Select   H/L Move or back   L/Enter Open   ? Help   Q Quit");
+    graphics.putString(1, 1, navigationHint(controller));
     graphics.drawLine(0, 2, size.getColumns() - 1, 2, '─');
     List<String> body = wrap(controller.viewLines(), width, size.getRows() - 6);
     for (int row = 0; row < body.size(); row++) graphics.putString(1, row + 3, body.get(row));
     if (controller.screen() == TuiController.Screen.EDITOR
         && controller.editor() != null
-        && controller.editor().mode() == EditorBuffer.Mode.TEXT) {
+        && (controller.editor().mode() == EditorBuffer.Mode.TEXT
+            || controller.editor().mode() == EditorBuffer.Mode.NORMAL)) {
       int headerRows =
           wrap(List.of(controller.viewLines().getFirst()), width, size.getRows()).size();
       int[] cursor =
@@ -46,6 +47,18 @@ public final class TerminalRenderer {
     graphics.drawLine(0, footer, size.getColumns() - 1, footer, '─');
     graphics.putString(1, footer + 1, fit(sanitize(controller.status()), width));
     screen.refresh();
+  }
+
+  private static String navigationHint(TuiController controller) {
+    if (controller.screen() == TuiController.Screen.EDITOR && controller.editor() != null) {
+      return switch (controller.editor().mode()) {
+        case TEXT -> "INSERT — type freely   Esc NORMAL   Ctrl+S Save";
+        case NORMAL -> "NORMAL — H/J/K/L Cursor   I Insert   Esc Back";
+        case CARD_REFERENCE, INDEX_LITERAL, EXTERNAL_REFERENCE ->
+            "LITERAL PROMPT — Enter confirm   Esc cancel";
+      };
+    }
+    return "J/K Select   H/L Move or back   L/Enter Open   ? Help   Q Quit";
   }
 
   public static List<String> wrap(List<String> lines, int width, int maxRows) {
