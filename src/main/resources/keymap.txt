@@ -1,0 +1,79 @@
+# Canonical command/keymap reference. Navigation uses plain vim-style keys.
+# h/j/k/l are handled by the current screen; editor and literal prompts receive text normally.
+
+Global:
+J/K    Move selection down/up; on Main move next/previous by filing order
+H      Return to parent where applicable; on Main move to previous card and on Index change divider
+L      Open the selected item; on Index move to the next divider
+Enter  Open selected item or confirm the current form
+Esc    Return or cancel the current modal prompt
+B      Return directly to Home; on a BibCard, show its back
+Q      Quit
+?      Help (Home)
+
+Home:
+J/K    Select Desk, Main, Index, or Bib
+L/Enter  Open the selected box
+
+Desk:
+J/K    Select a saved draft
+L/Enter  Edit the selected draft
+N      Create a draft
+F      File the selected draft at a manually entered address
+X      Discard the selected saved draft after confirmation
+
+Main:
+J/K    Next/previous card in physical filing order
+G      Enter an exact address manually
+
+Index divider:
+H/L    Previous/next A–Z divider
+J/K    Select an overflow ListIndexCard
+Enter  Open the selected list card
+A      Create a list card and its first entry (enter overflow, text, kind, literal)
+*      Browse dedicated keyterm cards
+
+Index cards:
+J/K    Select an authored entry
+Enter  Read the printed pointer; never follows it
+A      Append an authored entry (text, target kind, literal)
+P      Promote the selected list entry to a dedicated keyterm card; original retained
+
+Dedicated keyterm cards:
+J/K    Select a keyterm card alphabetically
+L/Enter  Open the selected keyterm card
+
+Bibliography:
+J/K    Select a source
+L/Enter  Read the selected source citation
+I      Import a local BibTeX file and review reconciliation
+C      Create a user-authored research BibCard for the selected source
+A      Append a located, user-authored BibNote
+H/L    Read the BibCard front/back
+E      In the Main editor's NORMAL mode, enter a literal external reference
+
+Editor:
+INSERT MODE:
+Esc     Return to NORMAL mode; text is unchanged
+Enter   Insert a newline
+
+NORMAL MODE:
+H/J/K/L Move the editor cursor
+I       Return to INSERT mode
+R       Insert literal card reference
+T       Insert literal Index keyterm reference
+E       Insert literal external bibliographic reference
+:
+        Begin a Vim-style command
+:w      Save draft
+:q      Return to Desk; unsaved changes require confirmation
+:wq     Save draft and return to Desk
+Esc     Return to the Desk (a second Esc after leaving INSERT mode)
+
+LITERAL PROMPTS:
+Enter   Confirm the literal
+Esc     Cancel the prompt and return to the prior editor mode
+
+In INSERT mode and text-entry prompts, h/j/k/l are ordinary authored text.
+Editor mode hints and command prompt are fixed in the footer. Main addresses are
+highlighted in bold yellow; terminal font size is controlled by the terminal.

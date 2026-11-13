@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+echo "[pre-commit] validating staged patch"
+git diff --cached --check
+# Reject sensitive file names. This hook intentionally does not modify staged files.
+git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR | while IFS= read -r path; do
+  case "$path" in
+    *.db|*.sqlite|*.sqlite3|*.lbdb|*.db-wal|*.db-shm|*.pem|*.p12|*.key|*.env|*.env.*|*/.env|*/.env.*|*id_rsa*|*id_ed25519*)
+      echo "[pre-commit] refuse sensitive/database artifact: $path" >&2; exit 1 ;;
+  esac
+  git cat-file -e ":$path" 2>/dev/null || continue
+  case "$path" in
+    *.java|*.md|*.sql|*.json|*.jsonl|*.yml|*.yaml|*.xml|*.sh)
+      if git show ":$path" | grep -nE '^(<<<<<<< |=======|>>>>>>> )' >/dev/null; then
+        echo "[pre-commit] conflict marker in staged $path" >&2; exit 1
+      fi
+      if git show ":$path" | grep -nE 'TODO REMOVE|FIXME SECURITY' >/dev/null; then
+        echo "[pre-commit] critical placeholder in staged $path" >&2; exit 1
+      fi ;;
+  esac
+done
+echo "[pre-commit] OK"

@@ -1,0 +1,34 @@
+name: Implementation task
+description: Scoped engineering issue for the analog-first slipbox
+title: "ZK-XX: "
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Objective
+      description: Define user-observable behavior and changed domain contracts.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and linked docs
+      description: List issue codes and docs sections.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance tests and non-goals
+      description: Include positive, negative, crash/reopen and analog restrictions where relevant.
+    validations:
+      required: true
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Done gates
+      options:
+        - label: Tests added and mvn -B verify green
+        - label: Documentation / ADR updated if needed
+        - label: No user data or secrets committed
+        - label: Backward compatibility and migration validated where relevant

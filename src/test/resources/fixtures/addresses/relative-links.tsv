@@ -1,0 +1,4 @@
+source	literal	kind	expected-target
+4214/2e/3a	/1	STEM	4214/2e/3a/1
+4214/2e/3a	~/1/1a	BRANCH	4214/1/1a
+4214/2e/3a	1337/1b	FULL	1337/1b
